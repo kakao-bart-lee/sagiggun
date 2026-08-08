@@ -324,45 +324,18 @@ Expected: FAIL — `Failed to load url ../src/content/storage.js` (파일이 아
 Run: `npm test`
 Expected: PASS — storage 테스트 11개 전부 통과
 
-- [ ] **Step 8: manifest.json 작성**
+- [ ] **Step 8: .gitignore에 node_modules 확인**
 
-이 시점의 `js` 목록에는 아직 만들지 않은 파일이 들어 있다. Task 5에서 전부 채워질 때까지 확장을 로드하면 오류가 난다. 의도된 것이며, 파일 순서를 한 번에 확정해 두기 위해 지금 쓴다.
+`.gitignore`에 `node_modules/`가 이미 있는지 확인하고, 없으면 추가한다.
 
-`manifest.json`:
-
-```json
-{
-  "manifest_version": 3,
-  "name": "Threads 저장된 문구",
-  "description": "threads.com 메시지·게시물 입력창에 저장된 문구를 한 번에 넣습니다.",
-  "version": "0.1.0",
-  "permissions": ["storage"],
-  "content_scripts": [
-    {
-      "matches": [
-        "https://www.threads.com/*",
-        "https://threads.com/*",
-        "https://www.threads.net/*",
-        "https://threads.net/*"
-      ],
-      "js": [
-        "src/content/panel-css.js",
-        "src/content/storage.js",
-        "src/content/detector.js",
-        "src/content/inserter.js",
-        "src/content/panel.js",
-        "src/content/index.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ]
-}
-```
+Run: `grep -q '^node_modules/$' .gitignore || echo 'node_modules/' >> .gitignore`
 
 - [ ] **Step 9: 커밋**
 
+`manifest.json`은 Task 5에서 만든다. 참조할 파일이 전부 존재할 때 써야 로드 가능한 상태가 유지된다.
+
 ```bash
-git add package.json package-lock.json vitest.config.js manifest.json tests/setup.js tests/storage.test.js src/content/storage.js
+git add package.json package-lock.json vitest.config.js .gitignore tests/setup.js tests/storage.test.js src/content/storage.js
 git commit -m "feat: chrome.storage.local 기반 문구 저장 모듈"
 ```
 
@@ -1414,15 +1387,23 @@ Expected: FAIL — `Failed to load url ../src/content/panel.js`
     });
 
     listEl.addEventListener('click', async (event) => {
-      const item = event.target.closest('.item');
+      // event.target을 await 이후에 다시 읽으면 안 된다. dispatch가 끝나면
+      // target 게터가 재계산되면서 (shadow DOM 리타게팅) 클릭한 버튼이 아니라
+      // 호스트를 가리킬 수 있다. 필요한 값은 전부 동기적으로 캡처해 둔다.
+      const clicked = event.target;
+      const item = clicked.closest('.item');
       if (!item) return;
 
+      const isPick = !!clicked.closest('.pick');
+      const isEdit = !!clicked.closest('.edit');
+      const isDel = !!clicked.closest('.del');
       const id = item.dataset.id;
+
       const snippets = await storage.list();
       const snippet = snippets.find((s) => s.id === id);
       if (!snippet) return;
 
-      if (event.target.closest('.pick')) {
+      if (isPick) {
         const target = getTarget();
         if (!target) {
           setStatus('입력창을 먼저 클릭하세요.', 'warn');
@@ -1439,7 +1420,7 @@ Expected: FAIL — `Failed to load url ../src/content/panel.js`
         return;
       }
 
-      if (event.target.closest('.edit')) {
+      if (isEdit) {
         editingId = id;
         titleInput.value = snippet.title;
         bodyInput.value = snippet.body;
@@ -1449,7 +1430,7 @@ Expected: FAIL — `Failed to load url ../src/content/panel.js`
         return;
       }
 
-      if (event.target.closest('.del')) {
+      if (isDel) {
         await storage.remove(id);
         if (editingId === id) resetForm();
         await refresh();
@@ -1516,7 +1497,7 @@ git commit -m "feat: Shadow DOM 사이드바와 문구 CRUD 화면"
 ### Task 5: 진입점 배선
 
 **Files:**
-- Create: `src/content/index.js`
+- Create: `src/content/index.js`, `manifest.json`
 - Test: `tests/index.test.js`
 
 **Interfaces:**
@@ -1704,17 +1685,62 @@ Expected: FAIL — `Failed to load url ../src/content/index.js`
 Run: `npm test`
 Expected: PASS — 다섯 모듈 테스트 전부 통과
 
-- [ ] **Step 5: 확장 로드 확인**
+- [ ] **Step 5: manifest.json 작성**
+
+이제 참조할 파일이 전부 존재한다. `js` 배열 순서가 곧 로드 순서이고, 의존 순서와 같아야 한다.
+
+`manifest.json`:
+
+```json
+{
+  "manifest_version": 3,
+  "name": "Threads 저장된 문구",
+  "description": "threads.com 메시지·게시물 입력창에 저장된 문구를 한 번에 넣습니다.",
+  "version": "0.1.0",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.threads.com/*",
+        "https://threads.com/*",
+        "https://www.threads.net/*",
+        "https://threads.net/*"
+      ],
+      "js": [
+        "src/content/panel-css.js",
+        "src/content/storage.js",
+        "src/content/detector.js",
+        "src/content/inserter.js",
+        "src/content/panel.js",
+        "src/content/index.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
+```
+
+- [ ] **Step 6: manifest가 참조하는 파일이 모두 존재하는지 확인**
+
+Run:
+
+```bash
+node -e "const m=require('./manifest.json'),f=require('fs');const miss=m.content_scripts[0].js.filter(p=>!f.existsSync(p));if(miss.length){console.error('없는 파일:',miss);process.exit(1)}console.log('manifest 파일 참조 정상:',m.content_scripts[0].js.length,'개')"
+```
+
+Expected: `manifest 파일 참조 정상: 6 개`
+
+- [ ] **Step 7: 확장 로드 확인**
 
 Chrome에서 `chrome://extensions` → 개발자 모드 켜기 → "압축해제된 확장 프로그램을 로드" → 이 저장소 폴더 선택.
 
 Expected: 오류 없이 로드되고 확장 카드에 "Threads 저장된 문구 0.1.0"이 보인다. 카드에 빨간 "오류" 배지가 있으면 눌러서 내용을 확인한다 — 대개 `manifest.json`의 파일 경로 오타다.
 
-- [ ] **Step 6: 커밋**
+- [ ] **Step 8: 커밋**
 
 ```bash
-git add src/content/index.js tests/index.test.js
-git commit -m "feat: 콘텐츠 스크립트 진입점 배선"
+git add src/content/index.js tests/index.test.js manifest.json
+git commit -m "feat: 콘텐츠 스크립트 진입점 배선과 manifest"
 ```
 
 ---
