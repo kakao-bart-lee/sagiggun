@@ -23,7 +23,7 @@
       });
     }
 
-    tracker.onChange(() => handle.updateTargetState());
+    tracker.onChange((target) => handle.updateTargetState(target));
 
     // Threads는 SPA라 DOM이 끊임없이 바뀐다. 프레임 단위로 합쳐서 처리한다.
     let scheduled = false;
@@ -39,7 +39,11 @@
         // 정리된 tracker를 참조하는 좀비 패널을 되살리지 않도록 막는다.
         if (destroyed) return;
         if (!doc.getElementById(NS.panel.HOST_ID)) handle = mountPanel();
-        tracker.notifyDomChanged();
+        // 패널이 닫혀 있으면 대상 안내가 화면에 보이지도 않으니 매 프레임
+        // getTarget() 스캔 + DOM 갱신을 돌릴 이유가 없다. 열릴 때는
+        // setOpen()이 refresh()와 updateTargetState()를 직접 불러 최신
+        // 상태로 맞춘다.
+        if (handle.isOpen) tracker.notifyDomChanged();
       });
     });
     observer.observe(doc.body, { childList: true, subtree: true });

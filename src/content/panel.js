@@ -68,13 +68,27 @@
     // 클립보드 폴백 안내 같은 다른 warn 메시지는 대상이 생겨도 남아 있어야
     // 사용자가 안내를 읽을 시간을 확보한다.
     function setStatus(message, kind = '', source = '') {
-      statusEl.textContent = message || '';
-      statusEl.className = 'status' + (kind ? ' ' + kind : '');
+      const text = message || '';
+      const className = 'status' + (kind ? ' ' + kind : '');
+      // 이미 같은 상태면 DOM에 다시 쓰지 않는다. no-target 경고처럼 같은
+      // 메시지가 프레임마다 반복 호출될 수 있는 경로가 있어서다.
+      if (
+        statusEl.textContent === text &&
+        statusEl.className === className &&
+        statusEl.dataset.source === source
+      ) {
+        return;
+      }
+      statusEl.textContent = text;
+      statusEl.className = className;
       statusEl.dataset.source = source;
     }
 
-    function updateTargetState() {
-      const hasTarget = !!getTarget();
+    // target을 미리 계산해 넘길 수 있게 해서, 이미 getTarget()을 돌린
+    // 호출자(예: detector의 notifyDomChanged)가 같은 프레임에 두 번 돌리지
+    // 않아도 되게 한다. 안 넘기면 기존처럼 직접 계산한다.
+    function updateTargetState(target = getTarget()) {
+      const hasTarget = !!target;
       root.classList.toggle('no-target', !hasTarget);
       if (!hasTarget) setStatus('입력창을 먼저 클릭하세요.', 'warn', 'no-target');
       else if (statusEl.dataset.source === 'no-target') setStatus('');
@@ -272,6 +286,12 @@
       updateTargetState,
       setOpen,
       setSide,
+      // index.js가 rAF 루프에서 패널이 닫혀 있을 때 대상 갱신을 건너뛰는
+      // 데 쓴다. mount()의 필수 반환 계약(host/shadow/refresh/
+      // updateTargetState/setOpen/setSide/destroy)에 더해진 항목이다.
+      get isOpen() {
+        return !panelEl.hidden;
+      },
       destroy() {
         host.remove();
       },

@@ -115,4 +115,20 @@ describe('boot', () => {
     booted = null;
     expect(document.getElementById('tsnip-host')).toBeNull();
   });
+
+  it('패널이 닫혀 있으면 DOM 변경이 있어도 대상 안내가 갱신되지 않는다', async () => {
+    const handle = boot();
+    // 패널은 기본적으로 닫힌 채로 시작한다(저장된 열림 상태 없음).
+    document.body.appendChild(document.createElement('div'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(handle.shadow.querySelector('.status').textContent).toBe('');
+  });
+
+  it('패널이 열려 있으면 DOM 변경 시 대상 안내가 갱신된다(기존 동작 유지)', async () => {
+    const handle = boot();
+    await handle.setOpen(true);
+    document.body.appendChild(document.createElement('div'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(handle.shadow.querySelector('.status').textContent).toContain('입력창');
+  });
 });
