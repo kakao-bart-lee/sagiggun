@@ -86,6 +86,19 @@ describe('composeBody', () => {
     expect(args.temperature).toBeUndefined();
     expect(args.top_p).toBeUndefined();
     expect(args.top_k).toBeUndefined();
+    expect(args.thinking).toBeUndefined();
+  });
+
+  it('시스템 프롬프트에 실존 인물 관련 안전 지시가 유지된다', async () => {
+    const create = vi.fn(async (_args: unknown) => ok());
+    await composeBody(fields, [], { create });
+    const args = create.mock.calls[0][0] as { system: string };
+    const system = args.system;
+    expect(system).toMatch(/사진을 보고 쓰는 부분은 두 줄/);
+    expect(system).toMatch(/호의적/);
+    expect(system).toMatch(/등급/);
+    expect(system).toMatch(/실존 인물/);
+    expect(system).toMatch(/사람이 검수/);
   });
 
   it('max_tokens를 넉넉히 잡는다', async () => {
