@@ -1783,10 +1783,18 @@ export async function POST(request: Request) {
   return NextResponse.json({ profile, duplicates }, { status: 201 });
 }
 
+// 쿼리 파라미터를 Prisma enum으로 그냥 캐스팅하면 임의 입력이 쿼리에 들어간다.
+const statusFilter = z.enum(['COLLECTED', 'DRAFTED', 'APPROVED', 'PUBLISHED', 'ARCHIVED']);
+
 export async function GET(request: Request) {
-  const status = new URL(request.url).searchParams.get('status');
+  const raw = new URL(request.url).searchParams.get('status');
+  const parsed = statusFilter.safeParse(raw);
+  if (raw !== null && !parsed.success) {
+    return NextResponse.json({ error: '알 수 없는 상태 값입니다.' }, { status: 400 });
+  }
+
   const profiles = await prisma.profile.findMany({
-    where: status ? { status: status as never } : { status: { not: 'ARCHIVED' } },
+    where: parsed.success ? { status: parsed.data } : { status: { not: 'ARCHIVED' } },
     select: {
       id: true,
       seq: true,
