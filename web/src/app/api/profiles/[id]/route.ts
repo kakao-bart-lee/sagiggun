@@ -58,6 +58,13 @@ export async function PATCH(request: Request, { params }: Params) {
 
 export async function DELETE(_request: Request, { params }: Params) {
   const { id } = await params;
+
+  // deleteProfile() 안의 prisma.profile.delete()는 없는 id를 주면 Prisma P2025를
+  // 던지고 아무도 안 잡아서 500으로 샜다(Fix round 1 — Important 2). GET/PATCH와
+  // 동일하게 먼저 존재를 확인해 404로 처리한다.
+  const existing = await prisma.profile.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) return NextResponse.json({ error: '없는 프로필입니다.' }, { status: 404 });
+
   await deleteProfile(id);
   return NextResponse.json({ ok: true });
 }
