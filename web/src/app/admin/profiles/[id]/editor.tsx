@@ -33,6 +33,10 @@ const STATUS_LABEL: Record<string, string> = {
 export function ProfileEditor({ profile }: { profile: Profile }) {
   const router = useRouter();
   const [body, setBody] = useState(profile.finalBody ?? '');
+  // body가 아직 저장되지 않은 내용(사용자가 타이핑했거나, 방금 받은 새 작문
+  // 초안)을 담고 있으면 true. 저장(문구 저장/저장하고 승인) 성공 시 false로
+  // 돌아간다. "문구 작성"이 dirty 상태를 조용히 덮어쓰지 않도록 쓴다.
+  const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
   // disabled={!!busy}만으로는 삭제 연타를 완전히 막지 못한다 — 두 클릭이 같은
@@ -73,12 +77,29 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         </button>
         <button
           onClick={async () => {
+            // 미저장 편집(직접 타이핑했거나 지난 작문 결과를 아직 저장 안 한
+            // 상태)이 있으면 재작문이 그걸 조용히 덮어쓰기 전에 먼저 물어본다.
+            // LLM 호출 비용이 드는 요청이라 거절하면 아예 호출하지 않는다.
+            if (dirty && !confirm('작성 중인 내용이 있습니다. 새 초안으로 덮어쓸까요?')) return;
+
             const result = await call(`/api/profiles/${profile.id}/compose`, { method: 'POST' }, 'compose');
             // call()의 router.refresh()는 이 서버 컴포넌트 트리를 다시 그리지만
             // ProfileEditor는 리마운트되지 않으므로 useState(profile.finalBody ?? '')
             // 초기값은 다시 평가되지 않는다 — 그대로 두면 작문이 성공해도 텍스트
-            // 영역이 갱신되지 않는다. 응답의 finalBody로 로컬 상태를 직접 맞춘다.
-            if (result?.profile?.finalBody != null) setBody(result.profile.finalBody);
+            // 영역이 갱신되지 않는다.
+            //
+            // 응답에서 finalBody가 아니라 draftBody를 읽는다: compose 라우트
+            // (compose/route.ts:80)는 `finalBody: profile.finalBody ?? draftBody`로
+            // 저장한다 — 즉 finalBody가 이미 값을 갖고 있으면(첫 작문 이후 항상
+            // 그렇다) 응답의 finalBody는 LLM 호출 "전"의 옛 값이고, 방금 생성된
+            // 새 문구는 항상 draftBody에 담겨 온다. finalBody를 읽으면 첫 작문만
+            // 우연히 맞고 재작문(가장 흔한 경로)에서는 화면이 안 바뀐다.
+            if (result?.profile?.draftBody != null) {
+              setBody(result.profile.draftBody);
+              // 새로 받은 초안은 아직 저장 전이다 — 여기서 dirty를 켜 둬야
+              // 이 상태로 또 재작문을 누르면 방금 받은 초안도 지켜진다.
+              setDirty(true);
+            }
           }}
           disabled={!!busy}
           className="rounded-lg border border-neutral-700 px-3 py-1 text-sm disabled:opacity-50"
@@ -113,7 +134,10 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         <span className="text-sm text-neutral-400">게시 문구 (번호 없이 ✨로 시작)</span>
         <textarea
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => {
+            setBody(e.target.value);
+            setDirty(true);
+          }}
           rows={20}
           className="rounded-lg border border-neutral-700 bg-neutral-950 p-3 text-sm"
         />
@@ -121,8 +145,8 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
 
       <div className="flex gap-2">
         <button
-          onClick={() =>
-            call(
+          onClick={async () => {
+            const saved = await call(
               `/api/profiles/${profile.id}`,
               {
                 method: 'PATCH',
@@ -130,8 +154,10 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
                 body: JSON.stringify({ finalBody: body }),
               },
               'save'
-            )
-          }
+            );
+            // 화면의 body가 이제 서버의 finalBody와 일치하므로 dirty를 해제한다.
+            if (saved) setDirty(false);
+          }}
           disabled={!!busy}
           className="rounded-lg border border-neutral-700 px-4 py-2 disabled:opacity-50"
         >
@@ -149,7 +175,10 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
               },
               'approve'
             );
-            if (saved) await call(`/api/profiles/${profile.id}/approve`, { method: 'POST' }, 'approve');
+            if (saved) {
+              setDirty(false);
+              await call(`/api/profiles/${profile.id}/approve`, { method: 'POST' }, 'approve');
+            }
           }}
           disabled={!!busy}
           className="rounded-lg bg-neutral-100 px-4 py-2 font-medium text-neutral-900 disabled:opacity-50"
