@@ -3,7 +3,7 @@
 
   function boot(doc = document) {
     if (globalThis.__tsnipBooted) return null;
-    if (!NS.storage || !NS.detector || !NS.inserter || !NS.panel) {
+    if (!NS.storage || !NS.detector || !NS.inserter || !NS.panel || !NS.css) {
       console.warn('[TSNIP] 모듈 로드 실패 — 부팅을 건너뜁니다.');
       return null;
     }

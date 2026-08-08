@@ -131,4 +131,12 @@ describe('boot', () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(handle.shadow.querySelector('.status').textContent).toContain('입력창');
   });
+
+  it('NS.css가 없으면 부팅을 건너뛴다', () => {
+    const saved = NS().css;
+    delete NS().css;
+    expect(NS().boot()).toBeNull();
+    expect(document.getElementById('tsnip-host')).toBeNull();
+    NS().css = saved;
+  });
 });
