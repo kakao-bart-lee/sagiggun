@@ -251,6 +251,69 @@ describe('문구 CRUD', () => {
   });
 });
 
+describe('패널 좌/우 위치', () => {
+  it('기본 위치는 오른쪽이다', async () => {
+    const { $ } = mountWith();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.root').classList.contains('side-left')).toBe(false);
+  });
+
+  it('setSide("left")를 호출하면 side-left 클래스가 붙고 저장된다', async () => {
+    const { handle, $ } = mountWith();
+    await handle.setSide('left');
+    expect($('.root').classList.contains('side-left')).toBe(true);
+    expect(await storage().getSide()).toBe('left');
+  });
+
+  it('setSide("right")를 호출하면 side-left 클래스가 떨어진다', async () => {
+    const { handle, $ } = mountWith();
+    await handle.setSide('left');
+    await handle.setSide('right');
+    expect($('.root').classList.contains('side-left')).toBe(false);
+    expect(await storage().getSide()).toBe('right');
+  });
+
+  it('저장된 위치가 left면 마운트 시 복원된다', async () => {
+    await storage().setSide('left');
+    const { $ } = mountWith();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.root').classList.contains('side-left')).toBe(true);
+  });
+
+  it('전환 버튼을 클릭하면 위치가 토글된다', async () => {
+    const { $ } = mountWith();
+    // .side는 패널 안에 있어 패널이 열려야 실제로 클릭 가능하다.
+    $('.tab').click();
+    await new Promise((r) => setTimeout(r, 0));
+    $('.side').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.root').classList.contains('side-left')).toBe(true);
+
+    $('.side').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.root').classList.contains('side-left')).toBe(false);
+  });
+
+  it('전환 버튼의 aria-label이 현재 위치에 따라 바뀐다', async () => {
+    const { $ } = mountWith();
+    $('.tab').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.side').getAttribute('aria-label')).toBe('왼쪽으로 옮기기');
+
+    $('.side').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.side').getAttribute('aria-label')).toBe('오른쪽으로 옮기기');
+  });
+
+  it('left/right가 아닌 값을 setSide에 넣으면 right로 정규화된다', async () => {
+    const { handle, $ } = mountWith();
+    await handle.setSide('left');
+    await handle.setSide('center');
+    expect($('.root').classList.contains('side-left')).toBe(false);
+    expect(await storage().getSide()).toBe('right');
+  });
+});
+
 describe('updateTargetState', () => {
   it('대상이 없으면 no-target 클래스를 붙인다', () => {
     const { handle } = mountWith({ target: null });

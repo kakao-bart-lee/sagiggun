@@ -8,6 +8,7 @@
 <section class="panel" hidden>
   <header class="head">
     <h1>저장된 문구</h1>
+    <button class="side" type="button" aria-label="왼쪽으로 옮기기">⇄</button>
     <button class="close" type="button" aria-label="닫기">&times;</button>
   </header>
   <p class="status" role="status"></p>
@@ -58,6 +59,7 @@
     const bodyInput = $('.f-body');
     const cancelBtn = $('.cancel');
     const saveBtn = $('.save');
+    const sideBtn = $('.side');
 
     let editingId = null;
 
@@ -124,6 +126,16 @@
         item.append(pick, edit, del);
         listEl.appendChild(item);
       }
+    }
+
+    async function setSide(side) {
+      const normalized = side === 'left' ? 'left' : 'right';
+      root.classList.toggle('side-left', normalized === 'left');
+      sideBtn.setAttribute(
+        'aria-label',
+        normalized === 'left' ? '오른쪽으로 옮기기' : '왼쪽으로 옮기기'
+      );
+      await storage.setSide(normalized);
     }
 
     async function setOpen(open) {
@@ -220,10 +232,18 @@
     cancelBtn.addEventListener('click', resetForm);
     tabBtn.addEventListener('click', () => setOpen(panelEl.hidden));
     $('.close').addEventListener('click', () => setOpen(false));
+    sideBtn.addEventListener('click', () => {
+      setSide(root.classList.contains('side-left') ? 'right' : 'left');
+    });
 
     // 저장된 열림 상태 복원
     storage.isOpen().then((open) => {
       if (open) setOpen(true);
+    });
+
+    // 저장된 좌/우 위치 복원
+    storage.getSide().then((side) => {
+      if (side === 'left') setSide('left');
     });
 
     return {
@@ -232,6 +252,7 @@
       refresh,
       updateTargetState,
       setOpen,
+      setSide,
       destroy() {
         host.remove();
       },

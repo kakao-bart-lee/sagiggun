@@ -54,6 +54,7 @@
       refresh: (...args) => handle.refresh(...args),
       updateTargetState: () => handle.updateTargetState(),
       setOpen: (open) => handle.setOpen(open),
+      setSide: (side) => handle.setSide(side),
       destroy() {
         if (destroyed) return;
         destroyed = true;

@@ -70,4 +70,21 @@ describe('storage', () => {
     await storage().setOpen(true);
     expect(await storage().isOpen()).toBe(true);
   });
+
+  it('패널 위치 기본값은 right다', async () => {
+    expect(await storage().getSide()).toBe('right');
+  });
+
+  it('패널 위치를 저장하고 읽는다', async () => {
+    await storage().setSide('left');
+    expect(await storage().getSide()).toBe('left');
+  });
+
+  it('left/right가 아닌 값은 right로 정규화한다', async () => {
+    await storage().setSide('center');
+    expect(await storage().getSide()).toBe('right');
+
+    await storage().setSide(undefined);
+    expect(await storage().getSide()).toBe('right');
+  });
 });

@@ -17,6 +17,11 @@
   line-height: 1.5;
   color: #f5f5f5;
 }
+.root.side-left {
+  right: auto;
+  left: 0;
+  flex-direction: row-reverse;
+}
 
 .tab {
   writing-mode: vertical-rl;
@@ -31,6 +36,11 @@
   letter-spacing: 2px;
 }
 .tab:hover { background: #242424; }
+.root.side-left .tab {
+  border-right: 1px solid #303030;
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+}
 
 .panel {
   width: 300px;
@@ -45,9 +55,19 @@
   box-sizing: border-box;
 }
 .panel[hidden] { display: none; }
+.root.side-left .panel {
+  border-right: 1px solid #303030;
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+}
 
-.head { display: flex; align-items: center; justify-content: space-between; }
-.head h1 { margin: 0; font-size: 14px; font-weight: 600; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.head h1 { margin: 0; margin-right: auto; font-size: 14px; font-weight: 600; }
+.side {
+  background: none; border: 0; color: #999;
+  font-size: 14px; cursor: pointer; padding: 0 4px;
+}
+.side:hover { color: #f5f5f5; }
 .close {
   background: none; border: 0; color: #999;
   font-size: 18px; cursor: pointer; padding: 0 4px;

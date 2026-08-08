@@ -2,6 +2,7 @@
   const NS = (globalThis.TSNIP = globalThis.TSNIP || {});
   const KEY_SNIPPETS = 'snippets';
   const KEY_OPEN = 'panelOpen';
+  const KEY_SIDE = 'panelSide';
 
   const area = () => globalThis.chrome?.storage?.local;
 
@@ -119,6 +120,15 @@
 
     async setOpen(open) {
       await write(KEY_OPEN, !!open);
+    },
+
+    async getSide() {
+      const side = await read(KEY_SIDE, 'right');
+      return side === 'left' ? 'left' : 'right';
+    },
+
+    async setSide(side) {
+      await write(KEY_SIDE, side === 'left' ? 'left' : 'right');
     },
   };
 })();
