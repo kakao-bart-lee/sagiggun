@@ -350,6 +350,42 @@ describe('저장/삭제 실패 처리', () => {
     removeSpy.mockRestore();
     vi.unstubAllGlobals();
   });
+
+  it('수정 대상이 이미 사라졌으면(update가 null) 성공으로 보고하지 않는다', async () => {
+    // 다른 탭에서 같은 문구를 먼저 지운 상황을 흉내낸다: update()는
+    // 예외 없이 "찾을 수 없음"을 뜻하는 null을 돌려준다.
+    const sn = await storage().add({ body: '원본' });
+    const { handle, $ } = mountWith();
+    await handle.refresh();
+    $('.item .edit').click();
+    await new Promise((r) => setTimeout(r, 0));
+    const updateSpy = vi.spyOn(storage(), 'update').mockResolvedValue(null);
+
+    $('.f-body').value = '수정 시도';
+    $('.form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect($('.status').textContent).not.toContain('저장했습니다');
+    expect($('.status').className).toContain('error');
+    updateSpy.mockRestore();
+  });
+
+  it('삭제 대상이 이미 사라졌으면(remove가 false) 성공으로 보고하지 않는다', async () => {
+    // 다른 탭에서 같은 문구를 먼저 지운 상황을 흉내낸다.
+    await storage().add({ body: '지울 문구' });
+    const { handle, $ } = mountWith();
+    await handle.refresh();
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    const removeSpy = vi.spyOn(storage(), 'remove').mockResolvedValue(false);
+
+    $('.item .del').click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect($('.status').textContent).not.toContain('삭제했습니다');
+    expect($('.status').className).toContain('error');
+    removeSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('패널 좌/우 위치', () => {

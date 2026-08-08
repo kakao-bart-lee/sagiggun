@@ -226,8 +226,9 @@
           `"${labelFor(snippet)}" 문구를 삭제할까요?`
         );
         if (!confirmed) return;
+        let removed;
         try {
-          await storage.remove(id);
+          removed = await storage.remove(id);
         } catch (err) {
           console.warn('[TSNIP] 문구 삭제 실패', err);
           setStatus('삭제에 실패했습니다. 다시 시도해 주세요.', 'error');
@@ -235,6 +236,13 @@
         }
         if (editingId === id) resetForm();
         await refresh();
+        // remove()는 실제로 지운 항목이 없으면(예: 다른 탭에서 이미 지운
+        // 문구) 예외 없이 false를 돌려준다. 이 경우도 성공으로 보고하면
+        // 안 된다.
+        if (!removed) {
+          setStatus('삭제할 문구를 찾을 수 없습니다.', 'error');
+          return;
+        }
         setStatus('삭제했습니다.', 'ok');
       }
     });
@@ -246,9 +254,15 @@
         setStatus('문구 내용을 입력하세요.', 'warn');
         return;
       }
+      let updated = true;
       try {
         if (editingId) {
-          await storage.update(editingId, { title: titleInput.value, body });
+          // update()는 대상이 이미 없으면(예: 다른 탭에서 지운 문구)
+          // 예외 없이 null을 돌려준다. 이것도 성공으로 보고하면 안 된다.
+          updated = !!(await storage.update(editingId, {
+            title: titleInput.value,
+            body,
+          }));
         } else {
           await storage.add({ title: titleInput.value, body });
         }
@@ -259,6 +273,10 @@
       }
       resetForm();
       await refresh();
+      if (!updated) {
+        setStatus('수정할 문구를 찾을 수 없습니다.', 'error');
+        return;
+      }
       setStatus('저장했습니다.', 'ok');
     });
 
