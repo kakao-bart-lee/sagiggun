@@ -125,18 +125,41 @@ describe('boot', () => {
   });
 
   it('패널이 열려 있으면 DOM 변경 시 대상 안내가 갱신된다(기존 동작 유지)', async () => {
+    // setOpen(true) 자체가 updateTargetState()를 불러 mutation 전에 이미
+    // 상태를 채워버리면, 이 테스트는 rAF → notifyDomChanged 경로를 전혀
+    // 지나가지 않고도 통과해 버려 아무것도 잠그지 못한다. 그래서 에디터가
+    // "있는" 상태로 열어 처음에는 경고가 없음을 먼저 확인하고, 그 다음
+    // 에디터를 DOM에서 제거하는 실제 mutation으로 경고가 나타나는지 본다.
+    // 이 전이는 mutation → rAF → notifyDomChanged → emit →
+    // updateTargetState(null) 체인을 통해서만 만들어진다.
+    const editor = makeEditor();
     const handle = boot();
     await handle.setOpen(true);
-    document.body.appendChild(document.createElement('div'));
+
+    expect(handle.shadow.querySelector('.status').textContent).toBe('');
+    expect(
+      handle.shadow.querySelector('.root').classList.contains('no-target')
+    ).toBe(false);
+
+    editor.remove();
     await new Promise((r) => setTimeout(r, 50));
+
     expect(handle.shadow.querySelector('.status').textContent).toContain('입력창');
+    expect(
+      handle.shadow.querySelector('.root').classList.contains('no-target')
+    ).toBe(true);
   });
 
   it('NS.css가 없으면 부팅을 건너뛴다', () => {
     const saved = NS().css;
     delete NS().css;
-    expect(NS().boot()).toBeNull();
-    expect(document.getElementById('tsnip-host')).toBeNull();
-    NS().css = saved;
+    try {
+      expect(NS().boot()).toBeNull();
+      expect(document.getElementById('tsnip-host')).toBeNull();
+    } finally {
+      // 단언이 실패해도 반드시 복원한다 — 안 그러면 이후 모든 테스트가
+      // NS.css 없이 부팅을 시도해 원인 불명으로 줄줄이 깨진다.
+      NS().css = saved;
+    }
   });
 });

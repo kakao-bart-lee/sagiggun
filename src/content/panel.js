@@ -225,7 +225,14 @@
         const confirmed = globalThis.confirm(
           `"${labelFor(snippet)}" 문구를 삭제할까요?`
         );
-        if (!confirmed) return;
+        if (!confirmed) {
+          // 취소를 안내한다. 그냥 return만 하면, 브라우저가 "이 페이지에서
+          // 추가 대화상자를 표시하지 않음"으로 confirm()을 영구히 false로
+          // 묶어버린 경우 사용자에게 아무 설명 없이 삭제가 계속 안 먹히는
+          // 것처럼 보인다.
+          setStatus('삭제를 취소했습니다.', 'warn');
+          return;
+        }
         let removed;
         try {
           removed = await storage.remove(id);

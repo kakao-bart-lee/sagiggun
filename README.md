@@ -28,7 +28,7 @@ npm install
 npm test
 ```
 
-Vitest + jsdom으로 76개 테스트가 돕니다.
+Vitest + jsdom 테스트가 있습니다. 정확한 개수는 코드와 함께 바뀌니 `npm test` 출력을 확인하세요.
 
 다만 **jsdom은 실제 Lexical 에디터를 흉내 내지 못합니다.** 단위 테스트가 검증하는 것은 저장 로직, 대상 선택 우선순위, 삽입 전략의 폴백 판정, 패널 UI 동작입니다. 삽입이 실제로 먹히는지는 진짜 threads.com에서 확인해야 하며, 검증 항목은 [구현 계획](docs/superpowers/plans/2026-08-08-threads-snippets.md)의 Task 6에 있습니다.
 

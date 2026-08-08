@@ -282,7 +282,11 @@ describe('삭제 확인 절차', () => {
     vi.unstubAllGlobals();
   });
 
-  it('취소하면 아무것도 지워지지 않는다', async () => {
+  it('취소하면 아무것도 지워지지 않고, 취소했다는 안내가 뜬다', async () => {
+    // 브라우저가 "이 페이지에서 추가 대화상자를 표시하지 않음"으로
+    // confirm()을 영구히 false로 묶어버릴 수 있다. 그때 아무 안내 없이
+    // return만 하면 사용자에게는 삭제가 계속 조용히 실패하는 것처럼
+    // 보인다 — 그래서 취소 경로에도 상태 문구가 있어야 한다.
     await storage().add({ body: '남을 문구' });
     const { handle, $ } = mountWith();
     await handle.refresh();
@@ -293,6 +297,7 @@ describe('삭제 확인 절차', () => {
 
     expect(await storage().list()).toHaveLength(1);
     expect($('.status').textContent).not.toContain('삭제했습니다');
+    expect($('.status').textContent).toContain('취소');
     vi.unstubAllGlobals();
   });
 });
