@@ -205,6 +205,13 @@
       }
 
       if (isDel) {
+        // 삽입 버튼(.pick) 바로 옆 같은 행에 있는 작은 타깃이라 오클릭하기
+        // 쉽고, 되돌릴 방법도 없다(내보내기·동기화 없음). 확인 없이는 지우지
+        // 않는다.
+        const confirmed = globalThis.confirm(
+          `"${labelFor(snippet)}" 문구를 삭제할까요?`
+        );
+        if (!confirmed) return;
         try {
           await storage.remove(id);
         } catch (err) {

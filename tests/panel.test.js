@@ -240,14 +240,60 @@ describe('문구 CRUD', () => {
     expect(list[0].body).toBe('수정된 본문');
   });
 
-  it('삭제 버튼을 누르면 목록에서 사라진다', async () => {
+  it('삭제 버튼을 누르면 확인 후 목록에서 사라진다', async () => {
     await storage().add({ body: '지울 문구' });
     const { handle, $ } = mountWith();
     await handle.refresh();
+    vi.stubGlobal('confirm', vi.fn(() => true));
 
     $('.item .del').click();
     await new Promise((r) => setTimeout(r, 0));
     expect(await storage().list()).toHaveLength(0);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('삭제 확인 절차', () => {
+  it('삭제 전에 어떤 문구가 지워지는지 담은 확인 메시지를 띄운다', async () => {
+    await storage().add({ title: '확인용 제목', body: '지울 문구' });
+    const { handle, $ } = mountWith();
+    await handle.refresh();
+    const confirmSpy = vi.fn(() => true);
+    vi.stubGlobal('confirm', confirmSpy);
+
+    $('.item .del').click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(confirmSpy.mock.calls[0][0]).toContain('확인용 제목');
+    vi.unstubAllGlobals();
+  });
+
+  it('확인하면 삭제된다', async () => {
+    await storage().add({ body: '지울 문구' });
+    const { handle, $ } = mountWith();
+    await handle.refresh();
+    vi.stubGlobal('confirm', vi.fn(() => true));
+
+    $('.item .del').click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(await storage().list()).toHaveLength(0);
+    vi.unstubAllGlobals();
+  });
+
+  it('취소하면 아무것도 지워지지 않는다', async () => {
+    await storage().add({ body: '남을 문구' });
+    const { handle, $ } = mountWith();
+    await handle.refresh();
+    vi.stubGlobal('confirm', vi.fn(() => false));
+
+    $('.item .del').click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(await storage().list()).toHaveLength(1);
+    expect($('.status').textContent).not.toContain('삭제했습니다');
+    vi.unstubAllGlobals();
   });
 });
 
@@ -290,6 +336,7 @@ describe('저장/삭제 실패 처리', () => {
     await storage().add({ body: '지울 문구' });
     const { handle, $ } = mountWith();
     await handle.refresh();
+    vi.stubGlobal('confirm', vi.fn(() => true));
     const removeSpy = vi
       .spyOn(storage(), 'remove')
       .mockRejectedValue(new Error('삭제 실패'));
@@ -301,6 +348,7 @@ describe('저장/삭제 실패 처리', () => {
     expect($('.status').className).toContain('error');
     expect($('.status').textContent).not.toContain('삭제했습니다');
     removeSpy.mockRestore();
+    vi.unstubAllGlobals();
   });
 });
 
