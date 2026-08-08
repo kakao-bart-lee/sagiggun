@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Status {
+  COLLECTED
+  DRAFTED
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+model Profile {
+  id     String @id @default(cuid())
+  seq    Int?   @unique
+  status Status @default(COLLECTED)
+
+  // 원본 — 언제든 다시 처리할 수 있어야 한다
+  sourceHandle String
+  rawText      String @db.Text
+
+  // 추출 결과
+  gender              String?
+  birthYear           Int?
+  region              String?
+  heightCm            Int?
+  job                 String?
+  hobbies             String[]
+  appealPoints        String[]
+  idealType           String[]
+  partnerBirthYearMin Int?
+  partnerBirthYearMax Int?
+  partnerRegions      String[]
+  dealBreakers        String[]
+
+  // 작문 결과 — 게시 번호는 포함하지 않는다
+  draftBody String? @db.Text
+  finalBody String? @db.Text
+
+  // 게시 (서브시스템 3)
+  publishedPostId String?
+  publishedAt     DateTime?
+
+  photos    Photo[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sourceHandle])
+  @@index([status])
+}
+
+model Photo {
+  id          String  @id @default(cuid())
+  profileId   String
+  profile     Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  storageKey  String
+  contentType String
+  bytes       Int
+  order       Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([profileId])
+}
