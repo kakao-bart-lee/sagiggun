@@ -50,7 +50,11 @@ export async function verifySessionToken(
   return expiresAt > now;
 }
 
-function timingSafeEqual(a: string, b: string): boolean {
+// 상수시간 비교. HMAC 서명 검증뿐 아니라 관리자 비밀번호 비교에도 재사용한다
+// (Fix round 1 — Important 1). 길이가 다르면 조기 반환하므로 비밀번호 "길이" 자체는
+// 여전히 타이밍으로 드러날 수 있다 — 문자 내용의 위치는 드러나지 않는다. 완벽한
+// 상수시간 문자열 비교는 어렵고, 이 경계는 알고 넘어가기로 한다.
+export function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
