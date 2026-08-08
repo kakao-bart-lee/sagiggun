@@ -159,7 +159,10 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
 
         <button
           onClick={async () => {
-            if (deleting.current || busy) return;
+            // busy(React state)는 여기서 체크하지 않는다 — disabled={!!busy}와
+            // 같은 렌더-커밋 지연을 그대로 갖고 있어서 이 클로저에서 다시 읽어도
+            // 보호가 늘지 않는다. deleting.current만이 동기적으로 신뢰할 수 있다.
+            if (deleting.current) return;
             if (!confirm('이 프로필과 사진을 모두 삭제할까요?')) return;
             // confirm()이 열려 있는 동안 또 다른 클릭이 들어왔을 가능성까지
             // 닫고 나서 한 번 더 확인한다.
