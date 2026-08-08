@@ -55,13 +55,17 @@ threads.com에서 자주 쓰는 문구를 사이드바에 저장해 두고, 클�
 
 ```
 manifest.json
-src/content/index.js       # 진입점: 관찰자 기동, 패널 마운트
+src/content/panel-css.js   # 사이드바 CSS 문자열
+src/content/storage.js     # chrome.storage.local 래퍼
 src/content/detector.js    # 에디터 탐지 + 대상 선택
 src/content/inserter.js    # 삽입 전략 (폴백 사다리)
 src/content/panel.js       # Shadow DOM 사이드바 + 문구 CRUD
-src/content/panel.css
-src/storage.js             # chrome.storage.local 래퍼
+src/content/index.js       # 진입점: 관찰자 기동, 패널 마운트
 ```
+
+CSS를 `.css` 파일이 아니라 JS 문자열로 두는 이유는, `content_scripts.css`가 문서에만 주입되고 Shadow DOM 안으로는 들어가지 않기 때문이다. 파일 순서는 의존 순서와 같고, `manifest.json`의 `js` 배열 순서가 그대로 로드 순서가 된다.
+
+빌드 단계를 만들지 않는다. 번들러 없이 "압축해제된 확장 프로그램을 로드"로 바로 동작해야 하므로, 각 파일은 IIFE로 감싸 `globalThis.TSNIP` 네임스페이스를 공유한다(MV3 콘텐츠 스크립트는 ES 모듈을 지원하지 않는다). `npm`은 테스트 전용이다.
 
 ## 4. 핵심 동작
 
@@ -73,7 +77,11 @@ src/storage.js             # chrome.storage.local 래퍼
 const SEL = '[contenteditable="true"][data-lexical-editor="true"][role="textbox"]';
 ```
 
-Threads는 SPA이므로 `MutationObserver`를 `document.body`에 `{ childList: true, subtree: true }`로 건다. 에디터는 추가될 뿐 아니라 **교체**되므로, 부착 여부는 `WeakSet`으로 관리해 멱등성을 보장한다.
+Threads는 SPA이므로 `MutationObserver`를 `document.body`에 `{ childList: true, subtree: true }`로 건다. 에디터는 추가될 뿐 아니라 **교체**되므로 멱등성이 필요하다.
+
+에디터마다 리스너를 붙이는 대신 `focusin`을 `document`에 **위임**한다. 위임은 그 자체로 멱등이라 부착 추적(`WeakSet` 등)이 아예 필요 없고, 교체된 에디터도 자동으로 커버된다. 관찰자가 하는 일은 두 가지로 줄어든다 — 패널 호스트가 사라졌으면 다시 붙이고, 대상 선택 상태를 갱신한다.
+
+Threads에서 이 관찰자는 초당 수백 번 발화하므로 `requestAnimationFrame`으로 콜백을 프레임 단위로 합친다.
 
 ### 4.2 삽입 대상 선택
 
