@@ -63,6 +63,28 @@ describe('경로 탈출 차단', () => {
   it('절대경로 키를 거부한다', async () => {
     await expect(readPhoto('/etc/passwd', dir)).rejects.toThrow(/경로/);
   });
+
+  it('중첩된 상위 디렉터리 참조를 거부한다', async () => {
+    await expect(readPhoto('prof1/../../../etc/passwd', dir)).rejects.toThrow(/경로/);
+    await expect(removePhoto('prof1/../../../../../../etc/passwd', dir)).rejects.toThrow(
+      /경로/
+    );
+  });
+
+  it('기준 디렉터리 이름을 접두사로 가진 형제 디렉터리로의 탈출을 거부한다', async () => {
+    // baseDir가 예: /tmp/photos-abc1 일 때, /tmp/photos-abc1-evil 같은 "형제" 디렉터리는
+    // 문자열로는 baseDir로 시작하지만 baseDir 안이 아니다. path.sep를 붙이지 않고
+    // startsWith만 비교하면 이 형제 디렉터리로 탈출할 수 있다.
+    const sibling = `${dir}-evil`;
+    await fs.mkdir(sibling, { recursive: true });
+    await fs.writeFile(path.join(sibling, 'secret.png'), 'top-secret');
+    try {
+      const key = `../${path.basename(sibling)}/secret.png`;
+      await expect(readPhoto(key, dir)).rejects.toThrow(/경로/);
+    } finally {
+      await fs.rm(sibling, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('assertUploadable', () => {
