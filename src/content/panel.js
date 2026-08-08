@@ -205,7 +205,13 @@
       }
 
       if (isDel) {
-        await storage.remove(id);
+        try {
+          await storage.remove(id);
+        } catch (err) {
+          console.warn('[TSNIP] 문구 삭제 실패', err);
+          setStatus('삭제에 실패했습니다. 다시 시도해 주세요.', 'error');
+          return;
+        }
         if (editingId === id) resetForm();
         await refresh();
         setStatus('삭제했습니다.', 'ok');
@@ -219,10 +225,16 @@
         setStatus('문구 내용을 입력하세요.', 'warn');
         return;
       }
-      if (editingId) {
-        await storage.update(editingId, { title: titleInput.value, body });
-      } else {
-        await storage.add({ title: titleInput.value, body });
+      try {
+        if (editingId) {
+          await storage.update(editingId, { title: titleInput.value, body });
+        } else {
+          await storage.add({ title: titleInput.value, body });
+        }
+      } catch (err) {
+        console.warn('[TSNIP] 문구 저장 실패', err);
+        setStatus('저장에 실패했습니다. 다시 시도해 주세요.', 'error');
+        return;
       }
       resetForm();
       await refresh();

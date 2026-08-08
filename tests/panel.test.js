@@ -251,6 +251,59 @@ describe('문구 CRUD', () => {
   });
 });
 
+describe('저장/삭제 실패 처리', () => {
+  it('추가 저장이 실패하면 오류를 안내하고 성공으로 보고하지 않는다', async () => {
+    const { handle, $ } = mountWith();
+    await handle.refresh();
+    const addSpy = vi.spyOn(storage(), 'add').mockRejectedValue(new Error('저장 실패'));
+
+    $('.f-body').value = '저장 안 될 문구';
+    $('.form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect($('.status').textContent).toContain('실패');
+    expect($('.status').className).toContain('error');
+    expect($('.status').textContent).not.toContain('저장했습니다');
+    addSpy.mockRestore();
+  });
+
+  it('수정 저장이 실패하면 오류를 안내한다', async () => {
+    const sn = await storage().add({ body: '원본' });
+    const { handle, $ } = mountWith();
+    await handle.refresh();
+    $('.item .edit').click();
+    await new Promise((r) => setTimeout(r, 0));
+    const updateSpy = vi
+      .spyOn(storage(), 'update')
+      .mockRejectedValue(new Error('저장 실패'));
+
+    $('.f-body').value = '수정 시도';
+    $('.form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect($('.status').textContent).toContain('실패');
+    expect($('.status').className).toContain('error');
+    updateSpy.mockRestore();
+  });
+
+  it('삭제가 실패하면 오류를 안내하고 성공으로 보고하지 않는다', async () => {
+    await storage().add({ body: '지울 문구' });
+    const { handle, $ } = mountWith();
+    await handle.refresh();
+    const removeSpy = vi
+      .spyOn(storage(), 'remove')
+      .mockRejectedValue(new Error('삭제 실패'));
+
+    $('.item .del').click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect($('.status').textContent).toContain('실패');
+    expect($('.status').className).toContain('error');
+    expect($('.status').textContent).not.toContain('삭제했습니다');
+    removeSpy.mockRestore();
+  });
+});
+
 describe('패널 좌/우 위치', () => {
   it('기본 위치는 오른쪽이다', async () => {
     const { $ } = mountWith();

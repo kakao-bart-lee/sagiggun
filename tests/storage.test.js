@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import '../src/content/storage.js';
 
 const storage = () => globalThis.TSNIP.storage;
@@ -86,5 +86,71 @@ describe('storage', () => {
 
     await storage().setSide(undefined);
     expect(await storage().getSide()).toBe('right');
+  });
+});
+
+describe('storage 읽기/쓰기 실패', () => {
+  it('읽기가 실패하면 add가 거부되고 기존 문구가 보존된다', async () => {
+    await storage().add({ title: '기존', body: '기존 문구' });
+
+    globalThis.chrome.storage.local.get = vi.fn(async () => {
+      throw new Error('읽기 실패');
+    });
+    await expect(storage().add({ body: '새 문구' })).rejects.toThrow();
+
+    // 읽기를 정상으로 되돌려 실제 저장 상태를 확인한다.
+    globalThis.chrome.storage.local.get = vi.fn(async (key) =>
+      key in globalThis.__store ? { [key]: globalThis.__store[key] } : {}
+    );
+    const list = await storage().list();
+    expect(list).toHaveLength(1);
+    expect(list[0].body).toBe('기존 문구');
+  });
+
+  it('읽기가 실패하면 update도 거부되고 기존 문구가 그대로다', async () => {
+    const sn = await storage().add({ body: '원본' });
+
+    globalThis.chrome.storage.local.get = vi.fn(async () => {
+      throw new Error('읽기 실패');
+    });
+    await expect(
+      storage().update(sn.id, { body: '바뀐 본문' })
+    ).rejects.toThrow();
+
+    globalThis.chrome.storage.local.get = vi.fn(async (key) =>
+      key in globalThis.__store ? { [key]: globalThis.__store[key] } : {}
+    );
+    const list = await storage().list();
+    expect(list).toHaveLength(1);
+    expect(list[0].body).toBe('원본');
+  });
+
+  it('읽기가 실패하면 remove도 거부되고 기존 문구가 남는다', async () => {
+    const sn = await storage().add({ body: '지우려던 문구' });
+
+    globalThis.chrome.storage.local.get = vi.fn(async () => {
+      throw new Error('읽기 실패');
+    });
+    await expect(storage().remove(sn.id)).rejects.toThrow();
+
+    globalThis.chrome.storage.local.get = vi.fn(async (key) =>
+      key in globalThis.__store ? { [key]: globalThis.__store[key] } : {}
+    );
+    const list = await storage().list();
+    expect(list).toHaveLength(1);
+  });
+
+  it('쓰기가 실패하면 add가 거부된다', async () => {
+    globalThis.chrome.storage.local.set = vi.fn(async () => {
+      throw new Error('쓰기 실패');
+    });
+    await expect(storage().add({ body: '새 문구' })).rejects.toThrow();
+  });
+
+  it('읽기가 실패해도 list()는 빈 배열을 돌려준다(읽기 전용이라 안전)', async () => {
+    globalThis.chrome.storage.local.get = vi.fn(async () => {
+      throw new Error('읽기 실패');
+    });
+    await expect(storage().list()).resolves.toEqual([]);
   });
 });

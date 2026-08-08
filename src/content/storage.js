@@ -18,13 +18,27 @@
     }
   }
 
+  // add/update/remove가 "읽기 → 배열 수정 → 쓰기"를 하기 직전의 읽기에서만
+  // 쓴다. read()와 달리 실패를 fallback으로 감추지 않고 그대로 던진다 —
+  // 삼키면 호출자가 "원래 비어 있었다"고 오인해 빈 배열 위에 새 항목
+  // 하나만 써서 기존 문구를 전부 지워버릴 수 있기 때문이다. 값이 아직
+  // 없는 정상 상태(첫 add 등)는 예외가 아니라 undefined를 돌려준다.
+  async function readForWrite(key) {
+    const a = area();
+    if (!a) throw new Error('[TSNIP] storage area unavailable');
+    const res = await a.get(key);
+    return res && key in res ? res[key] : undefined;
+  }
+
   async function write(key, value) {
     const a = area();
-    if (!a) return;
+    if (!a) return false;
     try {
       await a.set({ [key]: value });
+      return true;
     } catch (err) {
       console.warn('[TSNIP] storage write failed', err);
+      return false;
     }
   }
 
@@ -49,6 +63,16 @@
 
   async function listSnippets() {
     return normalize(await read(KEY_SNIPPETS, []));
+  }
+
+  // 쓰기 경로 전용: 읽기가 실패하면 던진다(위 readForWrite 참고).
+  async function listSnippetsForWrite() {
+    return normalize(await readForWrite(KEY_SNIPPETS));
+  }
+
+  async function writeSnippetsOrThrow(list) {
+    const ok = await write(KEY_SNIPPETS, list);
+    if (!ok) throw new Error('[TSNIP] 문구 저장 실패');
   }
 
   // --- 쓰기 직렬화 큐 --------------------------------------------------------
@@ -85,31 +109,31 @@
           body: String(body),
           createdAt: Date.now(),
         };
-        const list = await listSnippets();
+        const list = await listSnippetsForWrite();
         list.push(snippet);
-        await write(KEY_SNIPPETS, list);
+        await writeSnippetsOrThrow(list);
         return snippet;
       });
     },
 
     async update(id, { title, body } = {}) {
       return enqueueWrite(async () => {
-        const list = await listSnippets();
+        const list = await listSnippetsForWrite();
         const i = list.findIndex((s) => s.id === id);
         if (i === -1) return null;
         if (title !== undefined) list[i].title = String(title);
         if (body !== undefined) list[i].body = String(body);
-        await write(KEY_SNIPPETS, list);
+        await writeSnippetsOrThrow(list);
         return list[i];
       });
     },
 
     async remove(id) {
       return enqueueWrite(async () => {
-        const list = await listSnippets();
+        const list = await listSnippetsForWrite();
         const next = list.filter((s) => s.id !== id);
         if (next.length === list.length) return false;
-        await write(KEY_SNIPPETS, next);
+        await writeSnippetsOrThrow(next);
         return true;
       });
     },
