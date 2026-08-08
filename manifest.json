@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Threads 저장된 문구",
+  "description": "threads.com 메시지·게시물 입력창에 저장된 문구를 한 번에 넣습니다.",
+  "version": "0.1.0",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.threads.com/*",
+        "https://threads.com/*",
+        "https://www.threads.net/*",
+        "https://threads.net/*"
+      ],
+      "js": [
+        "src/content/panel-css.js",
+        "src/content/storage.js",
+        "src/content/detector.js",
+        "src/content/inserter.js",
+        "src/content/panel.js",
+        "src/content/index.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
