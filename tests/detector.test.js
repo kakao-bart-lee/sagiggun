@@ -57,6 +57,13 @@ describe('detector.createTracker', () => {
     expect(t.getTarget()).toBe(composer);
   });
 
+  it('둘 이상이고 다이얼로그 밖이며 포커스 이력도 없으면 null을 돌려준다', () => {
+    makeEditor();
+    makeEditor();
+    const t = detector().createTracker();
+    expect(t.getTarget()).toBeNull();
+  });
+
   it('마지막으로 포커스된 에디터를 우선한다', () => {
     const dm = makeEditor();
     makeEditor({ inDialog: true });
