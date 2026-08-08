@@ -182,6 +182,45 @@ describe('inserter.insert 기본 사다리 (opts.strategies 없이)', () => {
   });
 });
 
+describe('inserter.insert 성공 판정 하드닝', () => {
+  it('첫 확인에는 변화가 없지만 두 번째 확인에서 나타나면 다음 전략으로 내려가지 않는다', async () => {
+    const el = makeEditor();
+    let waitCount = 0;
+    // run()은 항상 성공(true)을 돌려주지만, 실제 텍스트 변화는 두 번째
+    // wait 이후에나 나타나는 "느린" 전략을 흉내낸다. paste가 실제로는
+    // 성공했는데 판정이 성급하게 실패로 보고 execCommand가 같은 텍스트를
+    // 한 번 더 넣는 상황(중복 삽입)을 재현한다.
+    const delayedStrategy = {
+      name: 'paste',
+      run() {
+        return true;
+      },
+    };
+    const wait = vi.fn(async () => {
+      waitCount++;
+      if (waitCount === 2) el.textContent += '안녕';
+    });
+
+    const how = await inserter().insert(el, '안녕', {
+      strategies: [delayedStrategy, workingStrategy('execCommand')],
+      wait,
+    });
+
+    expect(how).toBe('paste');
+    expect(el.textContent).toBe('안녕');
+    expect(wait).toHaveBeenCalledTimes(2);
+  });
+
+  it('두 번 확인해도 끝내 변화가 없으면 다음 전략으로 넘어간다(기존 폴백 유지)', async () => {
+    const el = makeEditor();
+    const how = await inserter().insert(el, '안녕', {
+      strategies: [noopStrategy('paste'), workingStrategy('execCommand')],
+    });
+    expect(how).toBe('execCommand');
+    expect(el.textContent).toBe('안녕');
+  });
+});
+
 describe('inserter.pasteStrategy 환경 가드', () => {
   it('DataTransfer가 없으면 false를 돌려주고 이벤트를 보내지 않는다', () => {
     const el = makeEditor();

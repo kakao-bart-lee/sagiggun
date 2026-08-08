@@ -67,6 +67,13 @@
 
       await wait();
       if (readText(editor) !== before) return strategy.name;
+
+      // 실패 판정의 대가가 "무반응"이 아니라 "중복 삽입"이다(다음 전략이
+      // 같은 텍스트를 한 번 더 넣는다). paste가 실제로는 성공했는데
+      // reconcile이 한 틱 늦어 오탐하는 상황에 대비해 한 번 더 기다렸다가
+      // 다시 확인한다. 그래도 변화가 없을 때만 다음 전략으로 내려간다.
+      await wait();
+      if (readText(editor) !== before) return strategy.name;
     }
 
     try {
