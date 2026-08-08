@@ -147,3 +147,67 @@ describe('inserter.execCommandStrategy', () => {
     expect(inserter().execCommandStrategy.run(makeEditor(), '안녕')).toBe(false);
   });
 });
+
+describe('inserter.insert 기본 사다리 (opts.strategies 없이)', () => {
+  it('paste가 성공하면 execCommand는 호출되지 않는다', async () => {
+    const el = makeEditor();
+    el.addEventListener('paste', (e) => {
+      el.textContent += e.clipboardData.getData('text/plain');
+    });
+    const spy = vi.fn(() => true);
+    document.execCommand = spy;
+
+    const how = await inserter().insert(el, '첫째 줄\n둘째 줄');
+
+    expect(how).toBe('paste');
+    expect(el.textContent).toBe('첫째 줄\n둘째 줄');
+    expect(spy).not.toHaveBeenCalled();
+    delete document.execCommand;
+  });
+
+  it('paste가 실패하면 execCommand로 넘어간다', async () => {
+    const el = makeEditor();
+    // paste 리스너를 달지 않으므로 dispatchEvent는 성공해도 텍스트는 변하지 않는다.
+    const spy = vi.fn((command, ui, text) => {
+      el.textContent += text;
+      return true;
+    });
+    document.execCommand = spy;
+
+    const how = await inserter().insert(el, '안녕');
+
+    expect(how).toBe('execCommand');
+    expect(spy).toHaveBeenCalledWith('insertText', false, '안녕');
+    delete document.execCommand;
+  });
+});
+
+describe('inserter.pasteStrategy 환경 가드', () => {
+  it('DataTransfer가 없으면 false를 돌려주고 이벤트를 보내지 않는다', () => {
+    const el = makeEditor();
+    let received = false;
+    el.addEventListener('paste', () => {
+      received = true;
+    });
+
+    vi.stubGlobal('DataTransfer', undefined);
+    expect(inserter().pasteStrategy.run(el, '안녕')).toBe(false);
+    vi.unstubAllGlobals();
+
+    expect(received).toBe(false);
+  });
+
+  it('ClipboardEvent가 없으면 false를 돌려주고 이벤트를 보내지 않는다', () => {
+    const el = makeEditor();
+    let received = false;
+    el.addEventListener('paste', () => {
+      received = true;
+    });
+
+    vi.stubGlobal('ClipboardEvent', undefined);
+    expect(inserter().pasteStrategy.run(el, '안녕')).toBe(false);
+    vi.unstubAllGlobals();
+
+    expect(received).toBe(false);
+  });
+});
