@@ -1387,15 +1387,23 @@ Expected: FAIL — `Failed to load url ../src/content/panel.js`
     });
 
     listEl.addEventListener('click', async (event) => {
-      const item = event.target.closest('.item');
+      // event.target을 await 이후에 다시 읽으면 안 된다. dispatch가 끝나면
+      // target 게터가 재계산되면서 (shadow DOM 리타게팅) 클릭한 버튼이 아니라
+      // 호스트를 가리킬 수 있다. 필요한 값은 전부 동기적으로 캡처해 둔다.
+      const clicked = event.target;
+      const item = clicked.closest('.item');
       if (!item) return;
 
+      const isPick = !!clicked.closest('.pick');
+      const isEdit = !!clicked.closest('.edit');
+      const isDel = !!clicked.closest('.del');
       const id = item.dataset.id;
+
       const snippets = await storage.list();
       const snippet = snippets.find((s) => s.id === id);
       if (!snippet) return;
 
-      if (event.target.closest('.pick')) {
+      if (isPick) {
         const target = getTarget();
         if (!target) {
           setStatus('입력창을 먼저 클릭하세요.', 'warn');
@@ -1412,7 +1420,7 @@ Expected: FAIL — `Failed to load url ../src/content/panel.js`
         return;
       }
 
-      if (event.target.closest('.edit')) {
+      if (isEdit) {
         editingId = id;
         titleInput.value = snippet.title;
         bodyInput.value = snippet.body;
@@ -1422,7 +1430,7 @@ Expected: FAIL — `Failed to load url ../src/content/panel.js`
         return;
       }
 
-      if (event.target.closest('.del')) {
+      if (isDel) {
         await storage.remove(id);
         if (editingId === id) resetForm();
         await refresh();
