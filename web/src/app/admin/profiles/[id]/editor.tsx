@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 type Profile = {
   id: string;
@@ -35,6 +35,14 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
   const [body, setBody] = useState(profile.finalBody ?? '');
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
+  // disabled={!!busy}만으로는 삭제 연타를 완전히 막지 못한다 — 두 클릭이 같은
+  // 틱에서 연달아 dispatch되면(예: 빠른 더블클릭) React가 busy 상태를 커밋해
+  // 실제 DOM의 disabled 속성에 반영하기 전에 두 번째 클릭이 이미 핸들러에
+  // 진입해 버릴 수 있다(직접 재현: b.click(); b.click()를 한 틱에서 실행하면
+  // confirm() 두 번·DELETE 요청 두 번이 나가고, 서버가 경쟁 조건으로 첫 번째
+  // 요청에 빈 바디 500을 준다). ref는 React 렌더링 사이클과 무관하게 즉시
+  // 갱신되므로, 핸들러 맨 앞에서 동기적으로 체크하면 이 틈을 없앨 수 있다.
+  const deleting = useRef(false);
 
   async function call(path: string, init?: RequestInit, label = '') {
     setBusy(label);
@@ -151,9 +159,18 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
 
         <button
           onClick={async () => {
+            if (deleting.current || busy) return;
             if (!confirm('이 프로필과 사진을 모두 삭제할까요?')) return;
+            // confirm()이 열려 있는 동안 또 다른 클릭이 들어왔을 가능성까지
+            // 닫고 나서 한 번 더 확인한다.
+            if (deleting.current) return;
+            deleting.current = true;
             const done = await call(`/api/profiles/${profile.id}`, { method: 'DELETE' }, 'delete');
-            if (done) router.push('/admin');
+            if (done) {
+              router.push('/admin');
+            } else {
+              deleting.current = false;
+            }
           }}
           disabled={!!busy}
           className="ml-auto rounded-lg border border-red-900 px-4 py-2 text-red-400 disabled:opacity-50"
