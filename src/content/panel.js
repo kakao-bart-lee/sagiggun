@@ -61,16 +61,21 @@
 
     let editingId = null;
 
-    function setStatus(message, kind = '') {
+    // statusEl.dataset.source로 이 메시지를 누가 띄웠는지 표시해 둔다.
+    // updateTargetState()는 자신이 띄운 'no-target' 경고만 지워야 하고,
+    // 클립보드 폴백 안내 같은 다른 warn 메시지는 대상이 생겨도 남아 있어야
+    // 사용자가 안내를 읽을 시간을 확보한다.
+    function setStatus(message, kind = '', source = '') {
       statusEl.textContent = message || '';
       statusEl.className = 'status' + (kind ? ' ' + kind : '');
+      statusEl.dataset.source = source;
     }
 
     function updateTargetState() {
       const hasTarget = !!getTarget();
       root.classList.toggle('no-target', !hasTarget);
-      if (!hasTarget) setStatus('입력창을 먼저 클릭하세요.', 'warn');
-      else if (statusEl.classList.contains('warn')) setStatus('');
+      if (!hasTarget) setStatus('입력창을 먼저 클릭하세요.', 'warn', 'no-target');
+      else if (statusEl.dataset.source === 'no-target') setStatus('');
     }
 
     function resetForm() {
@@ -158,7 +163,7 @@
       if (isPick) {
         const target = getTarget();
         if (!target) {
-          setStatus('입력창을 먼저 클릭하세요.', 'warn');
+          setStatus('입력창을 먼저 클릭하세요.', 'warn', 'no-target');
           return;
         }
         const how = await insert(target, snippet.body);
@@ -166,6 +171,11 @@
           setStatus('삽입에 실패해 클립보드에 복사했습니다. 직접 붙여넣어 주세요.', 'warn');
         } else if (how === 'failed') {
           setStatus('삽입에 실패했습니다.', 'error');
+        } else if (how === 'execCommand' && snippet.body.includes('\n')) {
+          // execCommand 폴백은 줄바꿈을 삼킨다(inserter.js 참고). 여러 줄
+          // 문구가 한 줄로 붙었을 수 있으니 성공으로 보고하지 않고 경고한다.
+          // 단일 줄 문구는 잃을 줄바꿈이 없으므로 일반 성공 처리로 둔다.
+          setStatus('삽입했지만 줄바꿈이 사라졌을 수 있습니다.', 'warn');
         } else {
           setStatus('삽입했습니다.', 'ok');
         }

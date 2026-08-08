@@ -154,6 +154,48 @@ describe('문구 삽입', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect($('.status').textContent).toContain('클립보드');
   });
+
+  it('execCommand 폴백이 쓰이고 본문이 여러 줄이면 줄바꿈 유실을 경고한다', async () => {
+    await storage().add({ body: '첫째 줄\n둘째 줄' });
+    const { handle, $ } = mountWith({
+      target: document.createElement('div'),
+      insert: vi.fn(async () => 'execCommand'),
+    });
+    await handle.refresh();
+
+    $('.item .pick').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.status').textContent).toContain('줄바꿈');
+    expect($('.status').className).toContain('warn');
+  });
+
+  it('execCommand 폴백이 쓰여도 본문이 한 줄이면 일반 성공으로 안내한다', async () => {
+    await storage().add({ body: '한 줄짜리 문구' });
+    const { handle, $ } = mountWith({
+      target: document.createElement('div'),
+      insert: vi.fn(async () => 'execCommand'),
+    });
+    await handle.refresh();
+
+    $('.item .pick').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.status').textContent).not.toContain('줄바꿈');
+    expect($('.status').className).toContain('ok');
+  });
+
+  it('삽입이 완전히 실패하면 실패를 안내한다', async () => {
+    await storage().add({ body: '안녕하세요' });
+    const { handle, $ } = mountWith({
+      target: document.createElement('div'),
+      insert: vi.fn(async () => 'failed'),
+    });
+    await handle.refresh();
+
+    $('.item .pick').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.status').textContent).toContain('실패');
+    expect($('.status').className).toContain('error');
+  });
 });
 
 describe('문구 CRUD', () => {
@@ -220,5 +262,43 @@ describe('updateTargetState', () => {
     const { handle } = mountWith({ target: document.createElement('div') });
     handle.updateTargetState();
     expect(handle.shadow.querySelector('.root').classList.contains('no-target')).toBe(false);
+  });
+
+  it('no-target 경고는 대상이 생기면 여전히 지워진다', () => {
+    let target = null;
+    const handle = panel().mount({
+      storage: storage(),
+      getTarget: () => target,
+      insert: vi.fn(async () => 'paste'),
+    });
+    const $ = (sel) => handle.shadow.querySelector(sel);
+
+    handle.updateTargetState();
+    expect($('.status').textContent).toContain('입력창');
+
+    target = document.createElement('div');
+    handle.updateTargetState();
+    expect($('.status').textContent).toBe('');
+  });
+
+  it('클립보드 폴백 안내는 대상이 있는 채로 updateTargetState가 다시 불려도 남아 있는다', async () => {
+    await storage().add({ body: '안녕하세요' });
+    const target = document.createElement('div');
+    const handle = panel().mount({
+      storage: storage(),
+      getTarget: () => target,
+      insert: vi.fn(async () => 'clipboard'),
+    });
+    const $ = (sel) => handle.shadow.querySelector(sel);
+    await handle.refresh();
+
+    $('.item .pick').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.status').textContent).toContain('클립보드');
+
+    // 포커스 변화 등으로 updateTargetState가 다시 호출돼도(대상은 여전히
+    // 있음) 클립보드 안내는 no-target 경고가 아니므로 지워지면 안 된다.
+    handle.updateTargetState();
+    expect($('.status').textContent).toContain('클립보드');
   });
 });
