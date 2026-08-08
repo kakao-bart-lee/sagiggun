@@ -85,4 +85,34 @@ describe('boot', () => {
 
     expect(document.getElementById('tsnip-host')).toBeNull();
   });
+
+  it('예약된 rAF가 실행되기 전에 destroy()가 호출되면 패널을 되살리지 않는다', async () => {
+    const handle = boot();
+
+    // mutation을 일으켜 MutationObserver 콜백이 rAF를 예약하게 한다.
+    document.body.appendChild(document.createElement('div'));
+    // MutationObserver 콜백은 마이크로태스크로 실행되므로, 매크로태스크로
+    // 넘어가 마이크로태스크 큐가 비워질 때까지 기다린다. 이 시점에는
+    // rAF가 "예약"만 됐고 아직 실행되지는 않았어야 한다.
+    await new Promise((r) => setTimeout(r, 0));
+
+    // rAF가 실행되기 전에 destroy() 호출 — 이게 레이스의 핵심 순서다.
+    handle.destroy();
+    booted = null;
+
+    // 예약된 rAF가 (취소되지 않았다면) 실행될 시간을 준다.
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(document.getElementById('tsnip-host')).toBeNull();
+  });
+
+  it('destroy()를 두 번 호출해도 안전하다', () => {
+    const handle = boot();
+    expect(() => {
+      handle.destroy();
+      handle.destroy();
+    }).not.toThrow();
+    booted = null;
+    expect(document.getElementById('tsnip-host')).toBeNull();
+  });
 });

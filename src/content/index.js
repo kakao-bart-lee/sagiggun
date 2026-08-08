@@ -27,11 +27,17 @@
 
     // Threads는 SPA라 DOM이 끊임없이 바뀐다. 프레임 단위로 합쳐서 처리한다.
     let scheduled = false;
+    let rafId = null;
+    let destroyed = false;
     const observer = new MutationObserver(() => {
       if (scheduled) return;
       scheduled = true;
-      requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(() => {
         scheduled = false;
+        rafId = null;
+        // destroy() 이후에 큐에 남아 있던 rAF가 뒤늦게 실행되어 이미
+        // 정리된 tracker를 참조하는 좀비 패널을 되살리지 않도록 막는다.
+        if (destroyed) return;
         if (!doc.getElementById(NS.panel.HOST_ID)) handle = mountPanel();
         tracker.notifyDomChanged();
       });
@@ -49,7 +55,12 @@
       updateTargetState: () => handle.updateTargetState(),
       setOpen: (open) => handle.setOpen(open),
       destroy() {
+        if (destroyed) return;
+        destroyed = true;
         observer.disconnect();
+        // cancelAnimationFrame 하나만 믿지 않는다 — jsdom과 실제 브라우저의
+        // 동작 차이에 기대지 않도록 destroyed 플래그로도 이중 차단한다.
+        if (rafId !== null) cancelAnimationFrame(rafId);
         tracker.stop();
         handle.destroy();
         globalThis.__tsnipBooted = false;
