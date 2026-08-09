@@ -21,7 +21,8 @@ export async function POST(_request: Request, { params }: Params) {
   // "APPROVED인데 게시 문구가 빈" 불변식 위반 상태를 만든다(canApprove가 막으려던 바로 그 상태).
   // where에 읽은 값을 그대로 넣으면 그 사이 값이 바뀐 경우 count가 0이 되어,
   // 조용한 불변식 위반 대신 명시적 충돌 응답을 준다.
-  // finalBody는 스키마상 nullable이라 null도 정상 값이다 — Prisma가 IS NULL로 번역한다.
+  // finalBody는 스키마상 nullable이지만 canApprove를 통과한 시점에는 항상 비어 있지 않은
+  // 문자열이라 where에 null이 들어갈 일은 없다(들어가더라도 Prisma가 IS NULL로 번역한다).
   const result = await prisma.profile.updateMany({
     where: { id, finalBody: profile.finalBody, status: profile.status },
     data: { status: 'APPROVED' },
