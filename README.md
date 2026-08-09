@@ -15,11 +15,22 @@ threads.com의 메시지 입력창과 게시물 작성창에, 저장해 둔 문�
 
 ## 설치
 
-빌드 과정이 없습니다. `sagiggun/extension` 폴더를 그대로 로드하면 됩니다.
+빌드 과정이 없습니다. `sagiggun/extension` 폴더를 그대로 로드하면 됩니다. 저장소를 클론하는 대신
+[Releases](https://github.com/kakao-bart-lee/sagiggun/releases)에서 `extension` 폴더만 압축된
+채로 받아도 됩니다.
 
-**Chrome:** `chrome://extensions` → 우측 상단 "개발자 모드" 켜기 → "압축해제된 확장 프로그램을 로드" → `sagiggun/extension` 폴더 선택
+**Chrome:** `chrome://extensions` → 우측 상단 "개발자 모드" 켜기 → "압축해제된 확장 프로그램을 로드" → `extension` 폴더 선택
 
-**Edge:** `edge://extensions` → 좌측 "개발자 모드" 켜기 → "압축 풀린 확장 로드" → `sagiggun/extension` 폴더 선택
+**Edge:** `edge://extensions` → 좌측 "개발자 모드" 켜기 → "압축 풀린 확장 로드" → `extension` 폴더 선택
+
+## 안전성
+
+**이 확장에는 악의적인 코드가 없습니다.** 아래는 그 근거이고, 전부 직접 확인할 수 있습니다.
+
+- **요청 권한은 `storage` 하나뿐입니다**(`manifest.json`). 저장한 문구를 브라우저 로컬에 두는 용도이고, 그 외 권한은 요청하지 않습니다.
+- **콘텐츠 스크립트는 threads.com/threads.net에만 적용됩니다.** 다른 사이트에서는 이 확장의 코드가 아예 실행되지 않습니다.
+- **백그라운드 스크립트가 없고, 네트워크 호출이 없습니다.** `extension/src/` 전체를 뒤져도 `fetch`·`XMLHttpRequest`·`WebSocket` 호출이 한 줄도 없습니다 — 저장한 문구를 포함해 어떤 데이터도 외부로 나가지 않습니다.
+- **빌드 과정이 없습니다.** 배포되는 코드가 곧 소스 코드라 난독화되거나 번들링된 코드를 신뢰할 필요가 없습니다 — 로드하기 전에 `extension/src/`의 파일을 직접 열어 전부 읽어볼 수 있습니다.
 
 ## 사용법
 
