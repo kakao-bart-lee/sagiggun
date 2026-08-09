@@ -10,6 +10,7 @@ import {
 import { STATUS_LABEL, statusTone } from '@/lib/ui';
 import { prisma } from '@/lib/prisma';
 import { ProfileEditor } from './editor';
+import { ProfilePhotos } from './photos-panel';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,27 +62,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
           label={STATUS_LABEL[profile.status] ?? profile.status}
           tone={statusTone(profile.status)}
         />
+        {profile.seq != null && (
+          <span className="text-sm font-bold text-fog-muted">#{profile.seq}</span>
+        )}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="flex flex-col gap-4">
           <Panel>
-            <h3 className="mb-3 text-sm font-bold text-muted-on-card">사진</h3>
-            {profile.photos.length === 0 ? (
-              <p className="text-sm text-muted-on-card">사진이 없습니다.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {profile.photos.map((photo) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={photo.id}
-                    src={`/api/photos/${photo.id}`}
-                    alt=""
-                    className="h-36 w-36 rounded-[8px] border-2 border-edge object-cover"
-                  />
-                ))}
-              </div>
-            )}
+            <ProfilePhotos
+              profileId={profile.id}
+              photos={profile.photos.map((p) => ({ id: p.id }))}
+            />
           </Panel>
 
           <Panel className="flex-1">

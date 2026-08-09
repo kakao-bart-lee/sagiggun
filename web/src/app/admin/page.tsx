@@ -1,14 +1,55 @@
+import Link from 'next/link';
 import { AccessionCard, AdminTopBar, SessionStrip, StampLink } from '@/components/admin-ui';
-import { STATUS_LABEL, statusTone } from '@/lib/ui';
+import { STATUS_LABEL, statusTone, cn } from '@/lib/ui';
 import { prisma } from '@/lib/prisma';
+import type { Prisma, Status } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminHome() {
+type FilterKey = 'active' | 'approved' | 'published' | 'archived' | 'all';
+
+const FILTERS: Array<{ key: FilterKey; label: string }> = [
+  { key: 'active', label: '진행 중' },
+  { key: 'approved', label: '승인' },
+  { key: 'published', label: '게시됨' },
+  { key: 'archived', label: '보관' },
+  { key: 'all', label: '전체' },
+];
+
+function whereFor(filter: FilterKey): Prisma.ProfileWhereInput {
+  switch (filter) {
+    case 'approved':
+      return { status: 'APPROVED' };
+    case 'published':
+      return { status: 'PUBLISHED' };
+    case 'archived':
+      return { status: 'ARCHIVED' };
+    case 'all':
+      return {};
+    case 'active':
+    default:
+      return { status: { not: 'ARCHIVED' } };
+  }
+}
+
+function parseFilter(raw: string | string[] | undefined): FilterKey {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  if (v === 'approved' || v === 'published' || v === 'archived' || v === 'all') return v;
+  return 'active';
+}
+
+export default async function AdminHome({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const params = await searchParams;
+  const filter = parseFilter(params.status);
   const profiles = await prisma.profile.findMany({
-    where: { status: { not: 'ARCHIVED' } },
+    where: whereFor(filter),
     select: {
       id: true,
+      seq: true,
       status: true,
       sourceHandle: true,
       region: true,
@@ -26,9 +67,26 @@ export default async function AdminHome() {
     <main className="mx-auto max-w-6xl px-6 py-8">
       <AdminTopBar />
 
+      <nav className="mb-6 flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <Link
+            key={f.key}
+            href={f.key === 'active' ? '/admin' : `/admin?status=${f.key}`}
+            className={cn(
+              'rounded-[10px] border-2 px-3 py-1.5 text-sm font-bold',
+              filter === f.key
+                ? 'border-yellow text-yellow'
+                : 'border-edge text-fog-muted hover:border-fog-muted hover:text-fog'
+            )}
+          >
+            {f.label}
+          </Link>
+        ))}
+      </nav>
+
       <SessionStrip
         title="오늘 세션"
-        subtitle={profiles.length ? `대기 ${profiles.length}건` : '아직 프로필이 없습니다'}
+        subtitle={profiles.length ? `${profiles.length}건` : '해당 필터에 프로필이 없습니다'}
         action={<StampLink href="/admin/new">새 프로필</StampLink>}
       >
         {profiles.length === 0 ? (
@@ -40,10 +98,10 @@ export default async function AdminHome() {
             <AccessionCard
               key={p.id}
               href={`/admin/profiles/${p.id}`}
-              index={i + 1}
+              index={p.seq ?? i + 1}
               handle={p.sourceHandle}
               meta={`${p.region ?? '지역 미상'} · ${p.birthYear ?? '연도 미상'}`}
-              statusLabel={STATUS_LABEL[p.status] ?? p.status}
+              statusLabel={STATUS_LABEL[p.status as Status] ?? p.status}
               tone={statusTone(p.status)}
               thumbSrc={p.photos[0] ? `/api/photos/${p.photos[0].id}` : null}
             />

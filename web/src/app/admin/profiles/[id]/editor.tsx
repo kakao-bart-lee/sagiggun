@@ -24,6 +24,21 @@ type Profile = {
   finalBody: string | null;
 };
 
+function linesToList(value: string): string[] {
+  return value
+    .split(/[\n,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function listToLines(values: string[]): string {
+  return values.join('\n');
+}
+
+const fieldClass =
+  'rounded-[8px] border-2 border-edge bg-field p-2 text-sm text-on-card';
+const labelClass = 'text-xs font-bold text-muted-on-card';
+
 export function ProfileEditor({ profile }: { profile: Profile }) {
   const router = useRouter();
   const [body, setBody] = useState(profile.finalBody ?? '');
@@ -31,6 +46,19 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
   const deleting = useRef(false);
+
+  const [gender, setGender] = useState(profile.gender ?? '');
+  const [birthYear, setBirthYear] = useState(profile.birthYear?.toString() ?? '');
+  const [region, setRegion] = useState(profile.region ?? '');
+  const [heightCm, setHeightCm] = useState(profile.heightCm?.toString() ?? '');
+  const [job, setJob] = useState(profile.job ?? '');
+  const [hobbies, setHobbies] = useState(listToLines(profile.hobbies));
+  const [appealPoints, setAppealPoints] = useState(listToLines(profile.appealPoints));
+  const [idealType, setIdealType] = useState(listToLines(profile.idealType));
+  const [partnerMin, setPartnerMin] = useState(profile.partnerBirthYearMin?.toString() ?? '');
+  const [partnerMax, setPartnerMax] = useState(profile.partnerBirthYearMax?.toString() ?? '');
+  const [partnerRegions, setPartnerRegions] = useState(listToLines(profile.partnerRegions));
+  const [dealBreakers, setDealBreakers] = useState(listToLines(profile.dealBreakers));
 
   async function call(path: string, init?: RequestInit, label = '') {
     setBusy(label);
@@ -46,6 +74,32 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
     return data;
   }
 
+  function extractPayload() {
+    const n = (v: string) => {
+      const t = v.trim();
+      if (!t) return null;
+      const num = Number(t);
+      return Number.isFinite(num) ? Math.trunc(num) : null;
+    };
+    return {
+      gender: gender === 'F' || gender === 'M' ? gender : null,
+      birthYear: n(birthYear),
+      region: region.trim() || null,
+      heightCm: n(heightCm),
+      job: job.trim() || null,
+      hobbies: linesToList(hobbies),
+      appealPoints: linesToList(appealPoints),
+      idealType: linesToList(idealType),
+      partnerBirthYearMin: n(partnerMin),
+      partnerBirthYearMax: n(partnerMax),
+      partnerRegions: linesToList(partnerRegions),
+      dealBreakers: linesToList(dealBreakers),
+    };
+  }
+
+  const archived = profile.status === 'ARCHIVED';
+  const approved = profile.status === 'APPROVED';
+
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -56,7 +110,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         <StampButton
           tone="ghost"
           onClick={() => call(`/api/profiles/${profile.id}/extract`, { method: 'POST' }, 'extract')}
-          disabled={!!busy}
+          disabled={!!busy || archived}
           className="min-h-10 px-3 py-2 text-sm"
         >
           {busy === 'extract' ? '추출 중…' : '추출 실행'}
@@ -64,7 +118,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         <StampButton
           tone="blue"
           className="min-h-10 px-3 py-2 text-sm"
-          disabled={!!busy}
+          disabled={!!busy || archived}
           onClick={async () => {
             if (dirty && !confirm('작성 중인 내용이 있습니다. 새 초안으로 덮어쓸까요?')) return;
             const result = await call(
@@ -82,26 +136,129 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         </StampButton>
       </div>
 
-      <details className="rounded-[12px] border-2 border-edge bg-card p-4 text-on-card">
+      <details open className="rounded-[12px] border-2 border-edge bg-card p-4 text-on-card">
         <summary className="cursor-pointer text-sm font-bold text-muted-on-card">추출된 항목</summary>
-        <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <dt className="text-muted-on-card">지역</dt>
-          <dd>{profile.region ?? '—'}</dd>
-          <dt className="text-muted-on-card">출생연도</dt>
-          <dd>{profile.birthYear ?? '—'}</dd>
-          <dt className="text-muted-on-card">키</dt>
-          <dd>{profile.heightCm ? `${profile.heightCm}cm` : '—'}</dd>
-          <dt className="text-muted-on-card">직업</dt>
-          <dd>{profile.job ?? '—'}</dd>
-          <dt className="text-muted-on-card">취미</dt>
-          <dd>{profile.hobbies.join(', ') || '—'}</dd>
-          <dt className="text-muted-on-card">이상형 나이</dt>
-          <dd>
-            {profile.partnerBirthYearMin && profile.partnerBirthYearMax
-              ? `${profile.partnerBirthYearMin}~${profile.partnerBirthYearMax}년생`
-              : '—'}
-          </dd>
-        </dl>
+        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>성별</span>
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              className={fieldClass}
+            >
+              <option value="">미상</option>
+              <option value="F">F</option>
+              <option value="M">M</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>출생연도</span>
+            <input
+              value={birthYear}
+              onChange={(e) => setBirthYear(e.target.value)}
+              className={fieldClass}
+              inputMode="numeric"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>지역</span>
+            <input value={region} onChange={(e) => setRegion(e.target.value)} className={fieldClass} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>키(cm)</span>
+            <input
+              value={heightCm}
+              onChange={(e) => setHeightCm(e.target.value)}
+              className={fieldClass}
+              inputMode="numeric"
+            />
+          </label>
+          <label className="col-span-2 flex flex-col gap-1">
+            <span className={labelClass}>직업</span>
+            <input value={job} onChange={(e) => setJob(e.target.value)} className={fieldClass} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>취미 (줄바꿈/콤마)</span>
+            <textarea
+              value={hobbies}
+              onChange={(e) => setHobbies(e.target.value)}
+              rows={3}
+              className={fieldClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>본인 장점</span>
+            <textarea
+              value={appealPoints}
+              onChange={(e) => setAppealPoints(e.target.value)}
+              rows={3}
+              className={fieldClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>이상형</span>
+            <textarea
+              value={idealType}
+              onChange={(e) => setIdealType(e.target.value)}
+              rows={3}
+              className={fieldClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>가능 지역</span>
+            <textarea
+              value={partnerRegions}
+              onChange={(e) => setPartnerRegions(e.target.value)}
+              rows={3}
+              className={fieldClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>이상형 출생연도 최소</span>
+            <input
+              value={partnerMin}
+              onChange={(e) => setPartnerMin(e.target.value)}
+              className={fieldClass}
+              inputMode="numeric"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>이상형 출생연도 최대</span>
+            <input
+              value={partnerMax}
+              onChange={(e) => setPartnerMax(e.target.value)}
+              className={fieldClass}
+              inputMode="numeric"
+            />
+          </label>
+          <label className="col-span-2 flex flex-col gap-1">
+            <span className={labelClass}>절대 안 되는 것</span>
+            <textarea
+              value={dealBreakers}
+              onChange={(e) => setDealBreakers(e.target.value)}
+              rows={3}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+        <StampButton
+          tone="ghost"
+          className="mt-3 min-h-10 px-3 py-2 text-sm"
+          disabled={!!busy}
+          onClick={() =>
+            call(
+              `/api/profiles/${profile.id}`,
+              {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(extractPayload()),
+              },
+              'extract-save'
+            )
+          }
+        >
+          {busy === 'extract-save' ? '저장 중…' : '추출 저장'}
+        </StampButton>
       </details>
 
       <label className="flex flex-col gap-2">
@@ -137,27 +294,83 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
           {busy === 'save' ? '저장 중…' : '문구 저장'}
         </StampButton>
 
-        <StampButton
-          tone="yellow"
-          disabled={!!busy}
-          onClick={async () => {
-            const saved = await call(
-              `/api/profiles/${profile.id}`,
-              {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ finalBody: body }),
-              },
-              'approve'
-            );
-            if (saved) {
-              setDirty(false);
-              await call(`/api/profiles/${profile.id}/approve`, { method: 'POST' }, 'approve');
+        {!archived && (
+          <StampButton
+            tone="yellow"
+            disabled={!!busy}
+            onClick={async () => {
+              const saved = await call(
+                `/api/profiles/${profile.id}`,
+                {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ finalBody: body }),
+                },
+                'approve'
+              );
+              if (saved) {
+                setDirty(false);
+                await call(`/api/profiles/${profile.id}/approve`, { method: 'POST' }, 'approve');
+              }
+            }}
+          >
+            {busy === 'approve' ? '승인 중…' : '저장하고 승인'}
+          </StampButton>
+        )}
+
+        {approved && (
+          <StampButton
+            tone="blue"
+            disabled={!!busy}
+            onClick={() => {
+              if (!confirm('손으로 게시한 뒤 상태를 게시됨으로 표시할까요? (Threads API 없음)')) {
+                return;
+              }
+              return call(`/api/profiles/${profile.id}/publish-mark`, { method: 'POST' }, 'publish');
+            }}
+          >
+            {busy === 'publish' ? '표시 중…' : '게시됨으로 표시'}
+          </StampButton>
+        )}
+
+        {archived ? (
+          <StampButton
+            tone="ghost"
+            disabled={!!busy}
+            onClick={() =>
+              call(
+                `/api/profiles/${profile.id}`,
+                {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: 'UNARCHIVE' }),
+                },
+                'unarchive'
+              )
             }
-          }}
-        >
-          {busy === 'approve' ? '승인 중…' : '저장하고 승인'}
-        </StampButton>
+          >
+            {busy === 'unarchive' ? '해제 중…' : '보관 해제'}
+          </StampButton>
+        ) : (
+          <StampButton
+            tone="ghost"
+            disabled={!!busy}
+            onClick={() => {
+              if (!confirm('이 프로필을 보관할까요? 목록 기본 뷰에서 숨겨집니다.')) return;
+              return call(
+                `/api/profiles/${profile.id}`,
+                {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: 'ARCHIVED' }),
+                },
+                'archive'
+              );
+            }}
+          >
+            {busy === 'archive' ? '보관 중…' : '보관'}
+          </StampButton>
+        )}
 
         <StampButton
           tone="red"
