@@ -21,6 +21,7 @@ services:
     build: .
     container_name: matching_app
     restart: unless-stopped
+    command: sh -c "pnpm exec prisma migrate deploy && pnpm start"
     depends_on:
       postgres:
         condition: service_healthy

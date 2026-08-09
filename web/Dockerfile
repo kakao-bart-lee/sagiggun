@@ -25,6 +25,12 @@ ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/prisma ./prisma
+# prisma migrate deploy(컨테이너 기동 시 자동 실행, docker-compose.yml의 app.command 참고)가
+# 이 파일을 요구한다 — schema.prisma의 datasource 블록에 url이 없고(드라이버 어댑터 패턴이라
+# 런타임 클라이언트는 src/lib/prisma.ts가 직접 connectionString을 넘긴다), CLI용 url은
+# prisma.config.ts의 datasource.url에서만 옴. 없으면 "The datasource.url property is
+# required..." 로 즉시 실패하고 restart: unless-stopped가 재시작 루프를 돈다(실제 재현함).
+COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/public ./public
 EXPOSE 3000

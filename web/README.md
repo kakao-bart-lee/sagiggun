@@ -32,7 +32,7 @@ pnpm dev
 docker compose up -d --build
 ```
 
-`ADMIN_PASSWORD`, `SESSION_SECRET`, `ANTHROPIC_API_KEY` 를 환경에 넣어야 합니다. 사진은 `photo_data` 볼륨에 남습니다.
+`ADMIN_PASSWORD`, `SESSION_SECRET`, `ANTHROPIC_API_KEY` 를 환경에 넣어야 합니다. 사진은 `photo_data` 볼륨에 남습니다. 마이그레이션은 컨테이너 시작 시 자동 적용됩니다.
 
 ## 개발
 
