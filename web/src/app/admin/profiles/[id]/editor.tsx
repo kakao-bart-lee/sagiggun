@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
@@ -65,6 +66,11 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
+        {/* 상시 노출한다. 삭제가 404 등으로 실패하면 화면에 남는데, 이 링크가 없으면
+            브라우저 뒤로가기 말고는 탈출구가 없다(다른 에러 상태에서도 마찬가지다). */}
+        <Link href="/admin" className="text-sm text-neutral-400 underline">
+          ← 목록으로
+        </Link>
         <span className="rounded-full border border-neutral-700 px-3 py-1 text-sm">
           {STATUS_LABEL[profile.status]}
         </span>
