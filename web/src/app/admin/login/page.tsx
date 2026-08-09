@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Panel, StampButton } from '@/components/admin-ui';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,22 +27,27 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-6">
-      <h1 className="text-lg font-semibold">매칭 관리자</h1>
-      <form onSubmit={submit} className="flex flex-col gap-3">
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="비밀번호"
-          className="rounded-lg border border-neutral-700 bg-neutral-950 p-3"
-          autoFocus
-        />
-        <button type="submit" className="rounded-lg bg-neutral-100 p-3 font-medium text-neutral-900">
-          로그인
-        </button>
-      </form>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-6 py-10">
+      <div>
+        <p className="text-[28px] font-extrabold tracking-tight text-fog">Some Love</p>
+        <h1 className="mt-2 text-[20px] font-bold text-fog-muted">운영자 로그인</h1>
+      </div>
+      <Panel>
+        <form onSubmit={submit} className="flex flex-col gap-3">
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="비밀번호"
+            className="rounded-[8px] border-2 border-edge bg-field p-3 text-on-card"
+            autoFocus
+          />
+          <StampButton type="submit" className="w-full">
+            로그인
+          </StampButton>
+        </form>
+      </Panel>
+      {error && <p className="text-sm font-bold text-telop-red">{error}</p>}
     </main>
   );
 }

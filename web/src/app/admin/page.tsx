@@ -1,13 +1,6 @@
-import Link from 'next/link';
+import { AccessionCard, AdminTopBar, SessionStrip, StampLink } from '@/components/admin-ui';
+import { STATUS_LABEL, statusTone } from '@/lib/ui';
 import { prisma } from '@/lib/prisma';
-
-const STATUS_LABEL: Record<string, string> = {
-  COLLECTED: '수집됨',
-  DRAFTED: '초안',
-  APPROVED: '승인됨',
-  PUBLISHED: '게시됨',
-  ARCHIVED: '보관',
-};
 
 export const dynamic = 'force-dynamic';
 
@@ -16,50 +9,54 @@ export default async function AdminHome() {
     where: { status: { not: 'ARCHIVED' } },
     select: {
       id: true,
-      seq: true,
       status: true,
       sourceHandle: true,
       region: true,
       birthYear: true,
-      createdAt: true,
+      photos: {
+        select: { id: true },
+        orderBy: { order: 'asc' },
+        take: 1,
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">프로필 {profiles.length}건</h1>
-        <Link href="/admin/new" className="rounded-lg bg-neutral-100 px-4 py-2 text-neutral-900">
-          새로 입수
-        </Link>
-      </div>
+    <main className="mx-auto max-w-6xl px-6 py-8">
+      <AdminTopBar />
 
-      {profiles.length === 0 ? (
-        <p className="text-neutral-500">아직 입수한 프로필이 없습니다.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {profiles.map((p) => (
-            <li key={p.id}>
-              <Link
-                href={`/admin/profiles/${p.id}`}
-                className="flex items-center justify-between rounded-lg border border-neutral-800 p-4 hover:bg-neutral-900"
-              >
-                <span>
-                  @{p.sourceHandle}
-                  <span className="ml-2 text-neutral-500">
-                    {p.region ?? '지역 미상'} · {p.birthYear ?? '연도 미상'}
-                  </span>
-                </span>
-                <span className="text-sm text-neutral-400">
-                  {p.seq ? `#${p.seq} · ` : ''}
-                  {STATUS_LABEL[p.status]}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <SessionStrip
+        title="오늘 세션"
+        subtitle={profiles.length ? `대기 ${profiles.length}건` : '아직 프로필이 없습니다'}
+        action={<StampLink href="/admin/new">새 프로필</StampLink>}
+      >
+        {profiles.length === 0 ? (
+          <div className="rounded-[12px] border-2 border-dashed border-edge px-6 py-10 text-sm text-fog-muted">
+            「새 프로필」로 DM 원문과 사진을 올리면 여기에 카드가 쌓입니다.
+          </div>
+        ) : (
+          profiles.map((p, i) => (
+            <AccessionCard
+              key={p.id}
+              href={`/admin/profiles/${p.id}`}
+              index={i + 1}
+              handle={p.sourceHandle}
+              meta={`${p.region ?? '지역 미상'} · ${p.birthYear ?? '연도 미상'}`}
+              statusLabel={STATUS_LABEL[p.status] ?? p.status}
+              tone={statusTone(p.status)}
+              thumbSrc={p.photos[0] ? `/api/photos/${p.photos[0].id}` : null}
+            />
+          ))
+        )}
+      </SessionStrip>
+
+      <section className="rounded-[12px] border-2 border-dashed border-edge px-6 py-16 text-center">
+        <p className="text-lg font-bold text-fog">카드를 골라 검수 책상을 여세요</p>
+        <p className="mt-2 text-sm text-fog-muted">
+          사진·원문은 왼쪽, 게시 문구와 승인은 오른쪽 — 스트립에서 다음 건으로 이어갑니다.
+        </p>
+      </section>
     </main>
   );
 }

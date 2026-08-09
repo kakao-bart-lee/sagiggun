@@ -14,3 +14,12 @@ web/next-env.d.ts
 web/AGENTS.md
 web/CLAUDE.md
 .gstack/
+
+# Impeccable working artifacts (keep live config, surface briefs, approved comps)
+.impeccable/sketches/
+.impeccable/questions/
+.impeccable/direction/
+.impeccable/mocks/inspect-*
+.impeccable/mocks/comp-a-*
+.impeccable/mocks/comp-b-*
+.impeccable/mocks/comp-c-*
