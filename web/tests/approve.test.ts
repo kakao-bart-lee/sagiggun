@@ -14,6 +14,11 @@ const rows = new Map<string, Row>();
 // 읽기(findUnique)와 쓰기(update/updateMany) 사이에 끼어드는 "다른 요청"을 심는 자리.
 // 첫 번째 쓰기 호출 직전에 딱 한 번 실행된다 — canApprove 검사를 통과시킨 뒤 실제
 // UPDATE가 DB에 닿기 직전이 정확히 TOCTOU 창이라, 여기가 경쟁 상대를 넣을 지점이다.
+//
+// 주의(단발성): runInterleave가 훅을 즉시 null로 비우므로 "가장 먼저 일어난 쓰기"
+// 하나에만 걸린다. 지금은 라우트가 승인 전에 쓰기를 하지 않아 의도한 자리에 정확히
+// 걸리지만, 나중에 approve 경로 앞쪽에 다른 쓰기가 생기면 훅이 거기서 소모돼
+// 아래 경쟁 테스트가 조용히 무의미해진다. 그때는 훅을 "N번째 쓰기"로 조준해야 한다.
 let interleave: (() => void) | null = null;
 
 function runInterleave(): void {
