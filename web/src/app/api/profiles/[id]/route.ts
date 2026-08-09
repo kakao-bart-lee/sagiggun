@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { deleteProfile } from '@/lib/profile/service';
-import { statusAfterEdit } from '@/lib/profile/state';
+import { statusAfterEdit, statusAfterUnarchive } from '@/lib/profile/state';
 
 const patchBody = z.object({
   gender: z.enum(['F', 'M']).nullable().optional(),
@@ -18,7 +18,8 @@ const patchBody = z.object({
   partnerRegions: z.array(z.string()).optional(),
   dealBreakers: z.array(z.string()).optional(),
   finalBody: z.string().nullable().optional(),
-  status: z.enum(['ARCHIVED', 'DRAFTED', 'COLLECTED']).optional(),
+  /** ARCHIVED = 보관. UNARCHIVE = 보관 해제(초안 유무로 DRAFTED/COLLECTED). */
+  status: z.enum(['ARCHIVED', 'UNARCHIVE']).optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -42,12 +43,22 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const current = await prisma.profile.findUnique({
     where: { id },
-    select: { status: true },
+    select: { status: true, draftBody: true },
   });
   if (!current) return NextResponse.json({ error: '없는 프로필입니다.' }, { status: 404 });
 
   const { status, ...fields } = parsed.data;
-  const nextStatus = status ?? statusAfterEdit(current.status);
+  let nextStatus = statusAfterEdit(current.status);
+  if (status === 'ARCHIVED') {
+    nextStatus = 'ARCHIVED';
+  } else if (status === 'UNARCHIVE') {
+    if (current.status !== 'ARCHIVED') {
+      return NextResponse.json({ error: '보관된 프로필만 보관 해제할 수 있습니다.' }, { status: 400 });
+    }
+    nextStatus = statusAfterUnarchive({ draftBody: current.draftBody });
+  } else if (current.status === 'ARCHIVED') {
+    nextStatus = 'ARCHIVED';
+  }
 
   const profile = await prisma.profile.update({
     where: { id },
@@ -59,9 +70,6 @@ export async function PATCH(request: Request, { params }: Params) {
 export async function DELETE(_request: Request, { params }: Params) {
   const { id } = await params;
 
-  // deleteProfile() 안의 prisma.profile.delete()는 없는 id를 주면 Prisma P2025를
-  // 던지고 아무도 안 잡아서 500으로 샜다(Fix round 1 — Important 2). GET/PATCH와
-  // 동일하게 먼저 존재를 확인해 404로 처리한다.
   const existing = await prisma.profile.findUnique({ where: { id }, select: { id: true } });
   if (!existing) return NextResponse.json({ error: '없는 프로필입니다.' }, { status: 404 });
 

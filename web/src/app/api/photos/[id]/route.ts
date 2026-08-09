@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { readPhoto } from '@/lib/storage';
+import { deletePhoto } from '@/lib/profile/service';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -20,9 +21,16 @@ export async function GET(_request: Request, { params }: Params) {
       },
     });
   } catch (error) {
-    // readPhoto가 실패하면 Node 원본 에러(서버 절대경로 포함)가 그대로 올라온다.
-    // 클라이언트에는 일반화된 한국어 메시지만 보내고, 원인은 서버 로그에만 남긴다.
     console.error('[photos] 사진 파일 읽기 실패', photo.storageKey, error);
     return NextResponse.json({ error: '사진 파일을 찾을 수 없습니다.' }, { status: 404 });
   }
+}
+
+export async function DELETE(_request: Request, { params }: Params) {
+  const { id } = await params;
+  const result = await deletePhoto(id);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+  return NextResponse.json({ ok: true });
 }
