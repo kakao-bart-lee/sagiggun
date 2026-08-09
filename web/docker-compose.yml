@@ -7,8 +7,10 @@ services:
       POSTGRES_DB: matching
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    # loopback에만 바인딩한다. 인터페이스 전체에 열면 비밀번호가 postgres인 DB가
+    # 그대로 인터넷에 노출된다. 다른 호스트에서 붙어야 하면 명시적으로 바꿔야 한다.
     ports:
-      - "${POSTGRES_PORT:-15433}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-15433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -31,8 +33,11 @@ services:
       SESSION_SECRET: ${SESSION_SECRET}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       PHOTO_DIR: /data/photos
+    # loopback에만 바인딩한다. rate limit이 X-Forwarded-For를 그대로 신뢰하므로
+    # 앱 포트를 직접 인터넷에 노출하면 로그인 무차별 대입 방어가 무력화된다.
+    # 외부 공개는 XFF를 덮어쓰는 리버스 프록시를 앞단에 두고 거기서 전달한다(README 참고).
     ports:
-      - "${APP_PORT:-3100}:3000"
+      - "127.0.0.1:${APP_PORT:-3100}:3000"
     volumes:
       - photo_data:/data/photos
 
