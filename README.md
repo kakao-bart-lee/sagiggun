@@ -9,6 +9,8 @@
 
 스레드 API에는 DM을 보내거나 읽는 엔드포인트가 없습니다. 게시는 서버에서 API로 할 수 있지만 DM은 브라우저를 거쳐야 하고, 그래서 확장이 이 시스템의 메시지 전달 계층입니다. 근거는 [입수 설계](docs/superpowers/specs/2026-08-09-matching-intake-design.md)·[매칭·전달 설계](docs/superpowers/specs/2026-08-10-matching-delivery-design.md)에 있습니다.
 
+웹 GCP Cloud Run 배포(스캐폴드): [`web/docs/deploy-gcp.md`](web/docs/deploy-gcp.md) (nngn-ops 패턴).
+
 threads.com의 메시지 입력창과 게시물 작성창에, 저장해 둔 문구(또는 전달 큐 초안)를 사이드바에서 클릭 한 번으로 넣는 브라우저 확장 프로그램입니다. Chrome에서 동작을 확인했습니다. Chromium 기반이라 Edge에서도 동작할 것으로 보이나 직접 확인하지는 않았습니다.
 
 여러 줄 문구도 줄바꿈이 그대로 보존되고, 문장 중간에 커서를 둔 채 클릭하면 그 자리에 삽입됩니다.

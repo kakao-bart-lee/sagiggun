@@ -36,4 +36,9 @@ describe('getEnv', () => {
     expect(getEnv({ ...full, OPS_API_TOKEN: 'short' }).opsApiToken).toBeNull();
     expect(getEnv({ ...full, OPS_API_TOKEN: 'x'.repeat(16) }).opsApiToken).toBe('x'.repeat(16));
   });
+
+  it('LLM_MODE 기본은 live, mock 가능', () => {
+    expect(getEnv(full).llmMode).toBe('live');
+    expect(getEnv({ ...full, LLM_MODE: 'mock' }).llmMode).toBe('mock');
+  });
 });

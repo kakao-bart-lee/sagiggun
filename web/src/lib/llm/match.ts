@@ -3,6 +3,8 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { getAnthropic, MODEL } from './client';
 import type { MatchProfileSlice } from '@/lib/match/filter';
 import type { ParseFn } from './extract';
+import { getEnv } from '@/lib/env';
+import { mockRankMatches } from './mock';
 
 export const MatchRankItemSchema = z.object({
   candidateId: z.string(),
@@ -61,6 +63,10 @@ export async function rankMatches(
   deps: { parse?: ParseFn } = {}
 ): Promise<MatchRankItem[]> {
   if (candidates.length === 0 || topN <= 0) return [];
+
+  if (!deps.parse && getEnv().llmMode === 'mock') {
+    return mockRankMatches(subject, candidates, topN);
+  }
 
   const parse: ParseFn =
     deps.parse ??

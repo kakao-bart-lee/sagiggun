@@ -9,6 +9,10 @@ const schema = z.object({
   PHOTO_DIR: z.string().min(1).default('./.photos'),
   // 확장 프로그램 API용. 비우거나 짧으면 Bearer 비활성.
   OPS_API_TOKEN: z.string().optional(),
+  // live = Claude API, mock = 결정적 픽스처 (e2e/로컬)
+  LLM_MODE: z.enum(['live', 'mock']).default('live'),
+  // 설정 시 GCS 버킷에 사진 저장 (Cloud Run). 비우면 PHOTO_DIR 로컬 파일.
+  PHOTO_BUCKET: z.string().optional(),
 });
 
 export type Env = {
@@ -18,6 +22,8 @@ export type Env = {
   anthropicApiKey: string;
   photoDir: string;
   opsApiToken: string | null;
+  llmMode: 'live' | 'mock';
+  photoBucket: string | null;
 };
 
 export function getEnv(source: Record<string, string | undefined> = process.env): Env {
@@ -28,6 +34,7 @@ export function getEnv(source: Record<string, string | undefined> = process.env)
   }
   const v = parsed.data;
   const ops = v.OPS_API_TOKEN?.trim() || '';
+  const bucket = v.PHOTO_BUCKET?.trim() || '';
   return {
     databaseUrl: v.DATABASE_URL,
     adminPassword: v.ADMIN_PASSWORD,
@@ -35,5 +42,7 @@ export function getEnv(source: Record<string, string | undefined> = process.env)
     anthropicApiKey: v.ANTHROPIC_API_KEY,
     photoDir: v.PHOTO_DIR,
     opsApiToken: ops.length >= 16 ? ops : null,
+    llmMode: v.LLM_MODE,
+    photoBucket: bucket || null,
   };
 }

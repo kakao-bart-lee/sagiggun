@@ -61,6 +61,16 @@ pnpm typecheck   # tsc --noEmit
 
 LLM 호출은 테스트에서 주입으로 대체됩니다. 실제 응답 품질은 테스트로 검증하지 않습니다 — 검증 대상은 형식 준수와 상태 기계입니다.
 
+e2e (Playwright, `LLM_MODE=mock` + 시드 데이터):
+
+```bash
+chmod +x scripts/e2e-prepare.sh
+./scripts/e2e-prepare.sh   # postgres · migrate · seed · build
+pnpm test:e2e
+```
+
+GCP Cloud Run 배포는 [docs/deploy-gcp.md](docs/deploy-gcp.md) (nngn-ops Cloud Run + Cloudflare 프록시 패턴)를 보세요.
+
 ## 알려진 한계
 
 - **Threads Publishing API(서브시스템 3)는 아직 없습니다.** 게시는 손으로 하고, 승인된 프로필에서 「게시됨으로 표시」로 상태·게시 번호(`seq`)만 앱에 남깁니다.
