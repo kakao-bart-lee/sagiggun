@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>Some Love 확장 옵션</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+        max-width: 420px;
+        margin: 24px auto;
+        padding: 0 16px;
+        color: #111;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-top: 12px;
+        margin-bottom: 4px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        font: inherit;
+      }
+      button {
+        margin-top: 16px;
+        padding: 10px 16px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .hint {
+        color: #555;
+        font-size: 13px;
+        margin-top: 8px;
+      }
+      #status {
+        margin-top: 12px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>관리자 API 연동</h1>
+    <p class="hint">웹 `.env`의 OPS_API_TOKEN(16자 이상)과 같은 값을 넣습니다. LLM 키는 넣지 마세요.</p>
+    <label for="apiBaseUrl">API Base URL</label>
+    <input id="apiBaseUrl" type="url" placeholder="http://127.0.0.1:3000" />
+    <label for="apiToken">OPS_API_TOKEN</label>
+    <input id="apiToken" type="password" autocomplete="off" />
+    <button id="save" type="button">저장</button>
+    <p id="status"></p>
+    <script src="options.js"></script>
+  </body>
+</html>

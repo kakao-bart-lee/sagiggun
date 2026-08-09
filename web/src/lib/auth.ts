@@ -60,3 +60,19 @@ export function timingSafeEqual(a: string, b: string): boolean {
   for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
+
+/** Authorization: Bearer <token> 에서 토큰만 뽑는다. */
+export function parseBearerToken(authorization: string | null | undefined): string {
+  if (!authorization || typeof authorization !== 'string') return '';
+  const m = /^Bearer\s+(.+)$/i.exec(authorization.trim());
+  return m?.[1]?.trim() ?? '';
+}
+
+/** OPS_API_TOKEN과 Bearer를 상수시간에 비교. 둘 중 하나라도 비면 false. */
+export function verifyOpsApiToken(
+  expected: string | null | undefined,
+  bearer: string
+): boolean {
+  if (!expected || !bearer) return false;
+  return timingSafeEqual(expected, bearer);
+}

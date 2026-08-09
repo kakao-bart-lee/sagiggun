@@ -32,6 +32,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       SESSION_SECRET: ${SESSION_SECRET}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPS_API_TOKEN: ${OPS_API_TOKEN:-}
       PHOTO_DIR: /data/photos
     # loopback에만 바인딩한다. rate limit이 X-Forwarded-For를 그대로 신뢰하므로
     # 앱 포트를 직접 인터넷에 노출하면 로그인 무차별 대입 방어가 무력화된다.

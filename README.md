@@ -4,12 +4,12 @@
 
 | 디렉터리 | 내용 |
 |---|---|
-| [`extension/`](extension) | threads.com 입력창에 저장된 문구를 넣는 크롬/Edge 확장 |
-| [`web/`](web) | 자기소개를 수집해 게시 문구를 만드는 관리자 웹앱 ([사용법](web/README.md)) |
+| [`extension/`](extension) | Threads 문구 삽입 · DM 수집 · 전달 큐 삽입 확장 |
+| [`web/`](web) | 수집·LLM 추출/작문/매칭·전달 큐 관리자 ([사용법](web/README.md)) |
 
-스레드 API에는 DM을 보내거나 읽는 엔드포인트가 없습니다. 게시는 서버에서 API로 할 수 있지만 DM은 브라우저를 거쳐야 하고, 그래서 확장이 이 시스템의 메시지 전달 계층입니다. 근거는 [설계 문서](docs/superpowers/specs/2026-08-09-matching-intake-design.md)에 있습니다.
+스레드 API에는 DM을 보내거나 읽는 엔드포인트가 없습니다. 게시는 서버에서 API로 할 수 있지만 DM은 브라우저를 거쳐야 하고, 그래서 확장이 이 시스템의 메시지 전달 계층입니다. 근거는 [입수 설계](docs/superpowers/specs/2026-08-09-matching-intake-design.md)·[매칭·전달 설계](docs/superpowers/specs/2026-08-10-matching-delivery-design.md)에 있습니다.
 
-threads.com의 메시지 입력창과 게시물 작성창에, 저장해 둔 문구를 사이드바에서 클릭 한 번으로 넣는 브라우저 확장 프로그램입니다. Chrome에서 동작을 확인했습니다. Chromium 기반이라 Edge에서도 동작할 것으로 보이나 직접 확인하지는 않았습니다.
+threads.com의 메시지 입력창과 게시물 작성창에, 저장해 둔 문구(또는 전달 큐 초안)를 사이드바에서 클릭 한 번으로 넣는 브라우저 확장 프로그램입니다. Chrome에서 동작을 확인했습니다. Chromium 기반이라 Edge에서도 동작할 것으로 보이나 직접 확인하지는 않았습니다.
 
 여러 줄 문구도 줄바꿈이 그대로 보존되고, 문장 중간에 커서를 둔 채 클릭하면 그 자리에 삽입됩니다.
 
@@ -25,12 +25,10 @@ threads.com의 메시지 입력창과 게시물 작성창에, 저장해 둔 문�
 
 ## 안전성
 
-**이 확장에는 악의적인 코드가 없습니다.** 아래는 그 근거이고, 전부 직접 확인할 수 있습니다.
-
-- **요청 권한은 `storage` 하나뿐입니다**(`manifest.json`). 저장한 문구를 브라우저 로컬에 두는 용도이고, 그 외 권한은 요청하지 않습니다.
-- **콘텐츠 스크립트는 threads.com/threads.net에만 적용됩니다.** 다른 사이트에서는 이 확장의 코드가 아예 실행되지 않습니다.
-- **백그라운드 스크립트가 없고, 네트워크 호출이 없습니다.** `extension/src/` 전체를 뒤져도 `fetch`·`XMLHttpRequest`·`WebSocket` 호출이 한 줄도 없습니다 — 저장한 문구를 포함해 어떤 데이터도 외부로 나가지 않습니다.
-- **빌드 과정이 없습니다.** 배포되는 코드가 곧 소스 코드라 난독화되거나 번들링된 코드를 신뢰할 필요가 없습니다 — 로드하기 전에 `extension/src/`의 파일을 직접 열어 전부 읽어볼 수 있습니다.
+- **기본 권한은 `storage`입니다.** 문구·옵션을 로컬에 둡니다.
+- **운영 API 연동 시에만** 옵션에서 지정한 관리자 origin에 대한 `optional_host_permissions`를 요청합니다. Anthropic 키는 확장에 두지 않습니다.
+- **콘텐츠 스크립트는 threads.com/threads.net에만 적용됩니다.**
+- **빌드 과정이 없습니다.** 로드 전에 `extension/src/`를 직접 읽을 수 있습니다.
 
 ## 사용법
 
@@ -38,6 +36,7 @@ threads.com의 메시지 입력창과 게시물 작성창에, 저장해 둔 문�
 2. 탭을 눌러 패널을 열고, 아래 입력란에 문구를 저장합니다. 제목은 선택 사항이며, 비우면 본문 첫 줄이 목록에 표시됩니다.
 3. 메시지 입력창이나 게시물 작성창을 클릭해 커서를 둡니다.
 4. 목록에서 문구를 클릭하면 커서 위치에 삽입됩니다.
+5. **운영 연동:** 확장 옵션에 관리자 URL + `OPS_API_TOKEN`을 저장한 뒤, 「이 대화 수집」과 전달 큐 「삽입」을 사용합니다. 보내기는 Threads에서 직접 누릅니다.
 
 문구 옆의 ✎로 수정, 🗑로 삭제합니다(삭제 전 확인을 거칩니다). 패널을 열어둔 상태는 새로고침 후에도 유지됩니다. 패널 상단의 ⇄ 버튼으로 화면 좌/우 위치를 전환할 수 있고, 이 위치도 저장됩니다.
 
@@ -57,11 +56,14 @@ Vitest + jsdom 테스트가 있습니다. 정확한 개수는 코드와 함께 �
 | 파일 | 책임 |
 |---|---|
 | `src/content/panel-css.js` | 사이드바 CSS (Shadow DOM에 주입할 문자열) |
-| `src/content/storage.js` | `chrome.storage.local` 래퍼, 문구 CRUD |
+| `src/content/storage.js` | `chrome.storage.local` 래퍼, 문구 CRUD·API 설정 |
 | `src/content/detector.js` | Lexical 에디터 탐지, 삽입 대상 선택 |
 | `src/content/inserter.js` | 삽입 전략 폴백 사다리 |
-| `src/content/panel.js` | Shadow DOM 사이드바 UI |
+| `src/content/api.js` | 관리자 API Bearer 클라이언트 |
+| `src/content/collector.js` | DM 대화 스크레이프·수집 업로드 |
+| `src/content/panel.js` | Shadow DOM 사이드바 UI (문구 + 운영) |
 | `src/content/index.js` | 진입점, MutationObserver |
+| `options.html` | API Base URL · OPS_API_TOKEN |
 
 빌드 도구를 쓰지 않으므로 소스에 `import`/`export`가 없습니다. MV3 콘텐츠 스크립트는 ES 모듈을 지원하지 않기 때문입니다. 각 파일은 IIFE로 감싸 `globalThis.TSNIP` 네임스페이스에 기능을 붙이고, `manifest.json`의 `js` 배열 순서대로 로드됩니다.
 
@@ -77,10 +79,11 @@ Vitest + jsdom 테스트가 있습니다. 정확한 개수는 코드와 함께 �
 
 ## 알려진 한계
 
-- Threads가 에디터 구조를 바꾸면 동작이 멈출 수 있습니다. 그럴 때는 삽입이 실패하는 대신 문구를 클립보드에 복사하고 직접 붙여넣도록 안내합니다.
+- Threads가 에디터·DM DOM 구조를 바꾸면 수집·삽입이 멈출 수 있습니다. 그럴 때는 클립보드 백업·관리자 붙여넣기를 쓰세요.
+- 전달은 문구 삽입까지이며 Send 자동 클릭은 없습니다.
 - 문구는 `chrome.storage.local`에 저장되므로 기기 간 동기화가 되지 않습니다. `chrome.storage.sync`는 항목당 8KB 제한이 있어 긴 문구에서 터집니다.
 - 여러 탭이 동기화되지 않습니다. 탭 A에서 문구를 추가·수정·삭제해도 이미 열려 있는 탭 B의 패널에는 새로고침 전까지 반영되지 않습니다.
 
 ## 범위 밖
 
-카테고리·태그, 키보드 단축키, 변수 치환, 가져오기/내보내기, 사용 통계, 드래그 정렬은 넣지 않았습니다.
+카테고리·태그, 키보드 단축키, 변수 치환, 가져오기/내보내기, 사용 통계, 드래그 정렬, Threads Publishing API는 넣지 않았습니다.

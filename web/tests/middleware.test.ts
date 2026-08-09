@@ -47,4 +47,20 @@ describe('evaluateGate — 미들웨어 게이트 판정', () => {
       to: '/admin/login',
     });
   });
+
+  it('유효한 OPS Bearer면 /api/* 만 통과하고 /admin은 막는다', async () => {
+    const ops = 'ops-token-16chars';
+    expect(
+      await evaluateGate('/api/profiles', SECRET, '', ops, ops)
+    ).toEqual({ kind: 'allow' });
+    expect(
+      await evaluateGate('/admin/profiles', SECRET, '', ops, ops)
+    ).toEqual({ kind: 'redirect', to: '/admin/login' });
+  });
+
+  it('잘못된 Bearer는 막는다', async () => {
+    expect(
+      await evaluateGate('/api/profiles', SECRET, '', 'ops-token-16chars', 'wrong-token-xxxxx')
+    ).toEqual({ kind: 'unauthorized' });
+  });
 });

@@ -21,6 +21,12 @@
       <button class="cancel" type="button" hidden>취소</button>
     </div>
   </form>
+  <section class="ops">
+    <h2>운영 (수집·전달)</h2>
+    <button class="collect" type="button">이 대화 수집</button>
+    <p class="ops-status" role="status"></p>
+    <ul class="dlist"></ul>
+  </section>
 </section>`;
 
   function labelFor(snippet) {
@@ -32,7 +38,7 @@
       : firstLine;
   }
 
-  function mount({ storage, getTarget, insert, doc = document }) {
+  function mount({ storage, getTarget, insert, doc = document, api, collector }) {
     doc.getElementById(HOST_ID)?.remove();
 
     const host = doc.createElement('div');
@@ -60,6 +66,11 @@
     const cancelBtn = $('.cancel');
     const saveBtn = $('.save');
     const sideBtn = $('.side');
+    const collectBtn = $('.collect');
+    const opsStatusEl = $('.ops-status');
+    const dlistEl = $('.dlist');
+    const opsApi = api || NS.api;
+    const opsCollector = collector || NS.collector;
 
     let editingId = null;
 
@@ -84,6 +95,11 @@
       statusEl.dataset.source = source;
     }
 
+    function setOpsStatus(message, kind = '') {
+      opsStatusEl.textContent = message || '';
+      opsStatusEl.className = 'ops-status' + (kind ? ' ' + kind : '');
+    }
+
     // target을 미리 계산해 넘길 수 있게 해서, 이미 getTarget()을 돌린
     // 호출자(예: detector의 notifyDomChanged)가 같은 프레임에 두 번 돌리지
     // 않아도 되게 한다. 안 넘기면 기존처럼 직접 계산한다.
@@ -102,6 +118,71 @@
       saveBtn.textContent = '저장';
     }
 
+    async function refreshDeliveries() {
+      dlistEl.textContent = '';
+      if (!opsApi || !storage.getOpsConfig) {
+        const empty = doc.createElement('li');
+        empty.className = 'empty';
+        empty.textContent = 'API 모듈이 없습니다.';
+        dlistEl.appendChild(empty);
+        return;
+      }
+      const cfg = await storage.getOpsConfig();
+      if (!cfg.apiBaseUrl || !cfg.apiToken) {
+        const empty = doc.createElement('li');
+        empty.className = 'empty';
+        empty.textContent = '옵션에서 API URL·토큰을 설정하세요.';
+        dlistEl.appendChild(empty);
+        return;
+      }
+      try {
+        const data = await opsApi.listDeliveries(storage, { status: 'PENDING' });
+        const items = data.items || [];
+        if (!items.length) {
+          const empty = doc.createElement('li');
+          empty.className = 'empty';
+          empty.textContent = '대기 중인 전달이 없습니다.';
+          dlistEl.appendChild(empty);
+          return;
+        }
+        for (const item of items) {
+          const li = doc.createElement('li');
+          li.className = 'ditem';
+          li.dataset.id = item.id;
+
+          const meta = doc.createElement('div');
+          meta.className = 'dmeta';
+          meta.textContent = '@' + (item.toHandle || '');
+
+          const body = doc.createElement('pre');
+          body.className = 'dbody';
+          body.textContent = item.body || '';
+
+          const actions = doc.createElement('div');
+          actions.className = 'dactions';
+
+          const insertBtn = doc.createElement('button');
+          insertBtn.type = 'button';
+          insertBtn.className = 'd-insert';
+          insertBtn.textContent = '삽입';
+
+          const doneBtn = doc.createElement('button');
+          doneBtn.type = 'button';
+          doneBtn.className = 'd-done';
+          doneBtn.textContent = '완료';
+
+          actions.append(insertBtn, doneBtn);
+          li.append(meta, body, actions);
+          dlistEl.appendChild(li);
+        }
+      } catch (err) {
+        const empty = doc.createElement('li');
+        empty.className = 'empty';
+        empty.textContent = err.message || '전달 큐를 불러오지 못했습니다.';
+        dlistEl.appendChild(empty);
+      }
+    }
+
     async function refresh() {
       const snippets = await storage.list();
       listEl.textContent = '';
@@ -111,35 +192,35 @@
         empty.className = 'empty';
         empty.textContent = '저장된 문구가 없습니다.';
         listEl.appendChild(empty);
-        return;
+      } else {
+        for (const snippet of snippets) {
+          const item = doc.createElement('li');
+          item.className = 'item';
+          item.dataset.id = snippet.id;
+
+          const pick = doc.createElement('button');
+          pick.type = 'button';
+          pick.className = 'pick';
+          pick.textContent = labelFor(snippet);
+          pick.title = snippet.body;
+
+          const edit = doc.createElement('button');
+          edit.type = 'button';
+          edit.className = 'edit';
+          edit.textContent = '✎';
+          edit.setAttribute('aria-label', '수정');
+
+          const del = doc.createElement('button');
+          del.type = 'button';
+          del.className = 'del';
+          del.textContent = '🗑';
+          del.setAttribute('aria-label', '삭제');
+
+          item.append(pick, edit, del);
+          listEl.appendChild(item);
+        }
       }
-
-      for (const snippet of snippets) {
-        const item = doc.createElement('li');
-        item.className = 'item';
-        item.dataset.id = snippet.id;
-
-        const pick = doc.createElement('button');
-        pick.type = 'button';
-        pick.className = 'pick';
-        pick.textContent = labelFor(snippet);
-        pick.title = snippet.body;
-
-        const edit = doc.createElement('button');
-        edit.type = 'button';
-        edit.className = 'edit';
-        edit.textContent = '✎';
-        edit.setAttribute('aria-label', '수정');
-
-        const del = doc.createElement('button');
-        del.type = 'button';
-        del.className = 'del';
-        del.textContent = '🗑';
-        del.setAttribute('aria-label', '삭제');
-
-        item.append(pick, edit, del);
-        listEl.appendChild(item);
-      }
+      await refreshDeliveries();
     }
 
     async function setSide(side) {
@@ -166,6 +247,77 @@
     // 없으면 클릭하는 순간 컴포저의 포커스와 커서 위치가 날아간다.
     listEl.addEventListener('mousedown', (event) => {
       if (event.target.closest('.pick')) event.preventDefault();
+    });
+    dlistEl.addEventListener('mousedown', (event) => {
+      if (event.target.closest('.d-insert')) event.preventDefault();
+    });
+
+    collectBtn.addEventListener('click', async () => {
+      if (!opsCollector || !opsApi) {
+        setOpsStatus('수집 모듈이 없습니다.', 'error');
+        return;
+      }
+      setOpsStatus('수집 중…');
+      try {
+        const result = await opsCollector.collectAndUpload({
+          storage,
+          api: opsApi,
+          doc,
+        });
+        setOpsStatus(
+          `수집됨 @${result.handle}` +
+            (result.photoFailed ? ` · 사진 ${result.photoFailed}장 실패` : '') +
+            ` → ${result.adminUrl}`,
+          'ok'
+        );
+      } catch (err) {
+        setOpsStatus(err.message || '수집 실패', 'error');
+      }
+    });
+
+    dlistEl.addEventListener('click', async (event) => {
+      const clicked = event.target;
+      const item = clicked.closest('.ditem');
+      if (!item) return;
+      const id = item.dataset.id;
+      const bodyEl = item.querySelector('.dbody');
+      const body = bodyEl?.textContent || '';
+
+      if (clicked.closest('.d-insert')) {
+        const target = getTarget();
+        if (!target) {
+          setOpsStatus('입력창을 먼저 클릭하세요.', 'warn');
+          return;
+        }
+        const how = await insert(target, body);
+        if (how === 'failed') {
+          setOpsStatus('삽입 실패', 'error');
+          return;
+        }
+        try {
+          await opsApi.patchDelivery(storage, id, 'INSERTED');
+          setOpsStatus(
+            how === 'clipboard'
+              ? '클립보드에 복사 · 삽입됨 표시. 붙여넣고 직접 보내세요.'
+              : '삽입했습니다. Threads에서 보내기를 누르세요.',
+            how === 'clipboard' ? 'warn' : 'ok'
+          );
+          await refreshDeliveries();
+        } catch (err) {
+          setOpsStatus(err.message || '상태 갱신 실패', 'error');
+        }
+        return;
+      }
+
+      if (clicked.closest('.d-done')) {
+        try {
+          await opsApi.patchDelivery(storage, id, 'DONE');
+          setOpsStatus('완료 처리했습니다.', 'ok');
+          await refreshDeliveries();
+        } catch (err) {
+          setOpsStatus(err.message || '완료 처리 실패', 'error');
+        }
+      }
     });
 
     listEl.addEventListener('click', async (event) => {

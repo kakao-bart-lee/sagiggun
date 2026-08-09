@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth';
+import {
+  SESSION_COOKIE,
+  parseBearerToken,
+  verifyOpsApiToken,
+  verifySessionToken,
+} from '@/lib/auth';
 
 // 로그인 페이지로 리다이렉트할 경로를 상수 하나로만 정의한다. PUBLIC_PATHS도
 // 이 상수를 참조하게 해서, "누군가 PUBLIC_PATHS를 잘못 고치면 조용히 fail-open된다"는
@@ -10,19 +15,52 @@ const PUBLIC_PATHS = [LOGIN_PATH, '/api/auth/login'];
 
 export type GateDecision = { kind: 'allow' } | { kind: 'unauthorized' } | { kind: 'redirect'; to: string };
 
+export type GateInput = {
+  pathname: string;
+  sessionSecret: string | undefined;
+  sessionToken: string;
+  /** 설정된 OPS_API_TOKEN. 비어 있으면 Bearer 비활성. */
+  opsApiToken?: string | null;
+  /** Authorization 헤더에서 뽑은 Bearer 토큰 (없으면 ''). */
+  bearerToken?: string;
+};
+
 // middleware()의 판정 로직 전체. NextRequest/NextResponse에 기대지 않는 순수 함수라
 // vitest(Node 환경)에서 Edge 런타임을 흉내 낼 필요 없이 바로 테스트할 수 있다
 // (Fix round 1 — Important 3). web/tests/middleware.test.ts 참고.
 export async function evaluateGate(
-  pathname: string,
-  secret: string | undefined,
-  token: string
+  pathnameOrInput: string | GateInput,
+  secret?: string | undefined,
+  token?: string,
+  opsApiToken?: string | null,
+  bearerToken?: string
 ): Promise<GateDecision> {
+  const input: GateInput =
+    typeof pathnameOrInput === 'string'
+      ? {
+          pathname: pathnameOrInput,
+          sessionSecret: secret,
+          sessionToken: token ?? '',
+          opsApiToken,
+          bearerToken,
+        }
+      : pathnameOrInput;
+
+  const { pathname } = input;
   if (PUBLIC_PATHS.includes(pathname)) return { kind: 'allow' };
 
-  // secret이 비어 있으면(설정 누락) 어떤 토큰이 와도 통과시키지 않는다 — fail-closed.
-  const ok = !!secret && (await verifySessionToken(secret, token, Date.now()));
-  if (ok) return { kind: 'allow' };
+  const sessionOk =
+    !!input.sessionSecret &&
+    (await verifySessionToken(input.sessionSecret, input.sessionToken, Date.now()));
+  if (sessionOk) return { kind: 'allow' };
+
+  // Bearer는 /api/* 만. 관리 HTML은 세션 필수.
+  if (
+    pathname.startsWith('/api/') &&
+    verifyOpsApiToken(input.opsApiToken, input.bearerToken ?? '')
+  ) {
+    return { kind: 'allow' };
+  }
 
   if (pathname.startsWith('/api/')) return { kind: 'unauthorized' };
   return { kind: 'redirect', to: LOGIN_PATH };
@@ -33,9 +71,17 @@ export async function evaluateGate(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const secret = process.env.SESSION_SECRET;
-  const token = request.cookies.get(SESSION_COOKIE)?.value ?? '';
+  const sessionToken = request.cookies.get(SESSION_COOKIE)?.value ?? '';
+  const opsApiToken = process.env.OPS_API_TOKEN?.trim() || null;
+  const bearerToken = parseBearerToken(request.headers.get('authorization'));
 
-  const decision = await evaluateGate(pathname, secret, token);
+  const decision = await evaluateGate({
+    pathname,
+    sessionSecret: secret,
+    sessionToken,
+    opsApiToken: opsApiToken && opsApiToken.length >= 16 ? opsApiToken : null,
+    bearerToken,
+  });
 
   switch (decision.kind) {
     case 'allow':
