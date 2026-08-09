@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: Params) {
   const saved: string[] = [];
   const failed: Array<{ name: string; reason: string }> = [];
 
-  for (const [index, file] of files.entries()) {
+  for (const file of files) {
     // 형식·크기·장수 검증 실패는 사용자가 원인을 알고 고칠 수 있어야 하니 이유를 그대로 보여준다.
     try {
       assertUploadable(file.type, file.size, existing + saved.length);
@@ -52,7 +52,12 @@ export async function POST(request: Request, { params }: Params) {
           storageKey,
           contentType: file.type,
           bytes: file.size,
-          order: existing + index,
+          // 검증(assertUploadable)이 쓰는 값과 같아야 한다. 이전에는 반복문 순번을
+          // 썼는데, 그건 이번 요청의 모든 파일(실패 포함) 순번이라 앞선 파일이 검증에
+          // 실패하면 두 값이 어긋나 서로 다른 사진이 같은 order를 갖게 됐다.
+          // saved.push는 아래에 있으므로 이 시점의 saved.length는
+          // "이번 요청에서 지금까지 성공한 개수"다.
+          order: existing + saved.length,
         },
         select: { id: true },
       });

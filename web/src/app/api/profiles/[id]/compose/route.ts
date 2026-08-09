@@ -36,6 +36,13 @@ export async function POST(_request: Request, { params }: Params) {
   });
   if (!profile) return NextResponse.json({ error: '없는 프로필입니다.' }, { status: 404 });
 
+  // canApprove(state.ts:10)는 ARCHIVED를 명시적으로 거부하는데 여기서 걸러내지 않으면
+  // 작문 한 번으로 보관된 프로필이 조용히 DRAFTED로 부활한다 — 모듈 간 계약 불일치다.
+  // PATCH로 이미 ARCHIVED를 설정할 수 있으므로 지금 도달 가능한 경로다.
+  if (profile.status === 'ARCHIVED') {
+    return NextResponse.json({ error: '보관된 프로필은 작문할 수 없습니다.' }, { status: 400 });
+  }
+
   const fields = ExtractedSchema.safeParse({
     gender: profile.gender,
     birthYear: profile.birthYear,
@@ -83,7 +90,12 @@ export async function POST(_request: Request, { params }: Params) {
     });
     return NextResponse.json({ profile: updated });
   } catch (error) {
-    // 기존 초안을 보존한다.
-    return NextResponse.json({ error: (error as Error).message }, { status: 502 });
+    // 기존 초안을 보존한다(에러 시 DB를 건드리지 않는다).
+    // SDK 원문 에러에는 모델명·요청 파라미터가 섞여 나올 수 있어 서버 로그에만 남긴다.
+    console.error('[compose] 작문 실패', id, error);
+    return NextResponse.json(
+      { error: '작문에 실패했습니다. 잠시 후 다시 시도해 주세요.' },
+      { status: 502 }
+    );
   }
 }
