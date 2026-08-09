@@ -1,4 +1,13 @@
-# Threads 저장된 문구
+# 사기꾼 — 스레드 소개팅 운영 도구
+
+저장소는 두 부분입니다.
+
+| 디렉터리 | 내용 |
+|---|---|
+| [`extension/`](extension) | threads.com 입력창에 저장된 문구를 넣는 크롬/Edge 확장 |
+| [`web/`](web) | 자기소개를 수집해 게시 문구를 만드는 관리자 웹앱 ([사용법](web/README.md)) |
+
+스레드 API에는 DM을 보내거나 읽는 엔드포인트가 없습니다. 게시는 서버에서 API로 할 수 있지만 DM은 브라우저를 거쳐야 하고, 그래서 확장이 이 시스템의 메시지 전달 계층입니다. 근거는 [설계 문서](docs/superpowers/specs/2026-08-09-matching-intake-design.md)에 있습니다.
 
 threads.com의 메시지 입력창과 게시물 작성창에, 저장해 둔 문구를 사이드바에서 클릭 한 번으로 넣는 브라우저 확장 프로그램입니다. Chrome에서 동작을 확인했습니다. Chromium 기반이라 Edge에서도 동작할 것으로 보이나 직접 확인하지는 않았습니다.
 
@@ -6,11 +15,11 @@ threads.com의 메시지 입력창과 게시물 작성창에, 저장해 둔 문�
 
 ## 설치
 
-빌드 과정이 없습니다. 이 폴더를 그대로 로드하면 됩니다.
+빌드 과정이 없습니다. `sagiggun/extension` 폴더를 그대로 로드하면 됩니다.
 
-**Chrome:** `chrome://extensions` → 우측 상단 "개발자 모드" 켜기 → "압축해제된 확장 프로그램을 로드" → 이 폴더 선택
+**Chrome:** `chrome://extensions` → 우측 상단 "개발자 모드" 켜기 → "압축해제된 확장 프로그램을 로드" → `sagiggun/extension` 폴더 선택
 
-**Edge:** `edge://extensions` → 좌측 "개발자 모드" 켜기 → "압축 풀린 확장 로드" → 이 폴더 선택
+**Edge:** `edge://extensions` → 좌측 "개발자 모드" 켜기 → "압축 풀린 확장 로드" → `sagiggun/extension` 폴더 선택
 
 ## 사용법
 
