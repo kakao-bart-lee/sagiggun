@@ -17,5 +17,24 @@ services:
       timeout: 5s
       retries: 10
 
+  app:
+    build: .
+    container_name: matching_app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/matching
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      PHOTO_DIR: /data/photos
+    ports:
+      - "${APP_PORT:-3100}:3000"
+    volumes:
+      - photo_data:/data/photos
+
 volumes:
   postgres_data:
+  photo_data:
