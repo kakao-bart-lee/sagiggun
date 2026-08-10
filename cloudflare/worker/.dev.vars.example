@@ -1,1 +1,2 @@
 ORIGIN_URL=https://your-cloud-run-service.run.app
+CANONICAL_HOST=love.nngn.ai

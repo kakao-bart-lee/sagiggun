@@ -36,11 +36,15 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/matching
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       SESSION_SECRET: ${SESSION_SECRET}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPS_API_TOKEN: ${OPS_API_TOKEN:-}
       PHOTO_DIR: /data/photos
       PORT: "8080"
       LLM_MODE: ${LLM_MODE:-live}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_REASONING: ${LLM_REASONING:-high}
       EXTENSION_CORS_ORIGINS: ${EXTENSION_CORS_ORIGINS:-}
     volumes:
       - photo_data:/data/photos

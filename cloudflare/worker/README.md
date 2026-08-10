@@ -24,8 +24,17 @@ npx wrangler@latest login
 npx wrangler@latest deploy --var "ORIGIN_URL:${CLOUD_RUN_URL}"
 ```
 
-초기에는 `workers.dev` 주소로 smoke test를 수행합니다. 실제 운영 hostname을 붙일 때는
-Cloudflare Custom Domain을 사용하거나 `wrangler.jsonc`에 실제 domain route를 추가합니다.
+운영 hostname은 `wrangler.jsonc`의 Custom Domain route로 관리합니다. 현재 배포값은
+`love.nngn.ai`이며, Cloudflare가 DNS 레코드와 인증서를 자동으로 관리합니다.
+
+```bash
+npx wrangler@latest deploy --dry-run
+npx wrangler@latest deploy
+```
+
+`wrangler deploy`를 로컬에서 실행하려면 Wrangler 인증이 필요합니다. Codex의 공식
+Cloudflare API MCP를 사용하는 경우에도 같은 Worker 이름(`sagiggun-proxy`)과
+`love.nngn.ai` custom domain을 사용합니다.
 도메인·zone/account가 정해지기 전에는 route를 저장소에 넣지 않습니다.
 
 Worker는 모든 HTTP method/body/query를 Cloud Run으로 전달하고, `Host`는 origin에 맞기도록

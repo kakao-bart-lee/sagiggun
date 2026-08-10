@@ -1,14 +1,11 @@
-import { getAnthropic, MODEL } from './client';
+import { getModel, getReasoningEffort, getTextCreator } from './client';
+import type { CreateFn } from './client';
 import { TEMPLATE, hasTemplateShape } from './template';
 import type { Extracted } from './extract';
 import { getEnv } from '@/lib/env';
 import { mockCompose } from './mock';
 
 export type PhotoInput = { contentType: string; base64: string };
-
-export type CreateFn = (
-  args: unknown
-) => Promise<{ content: Array<{ type: string; text?: string }> }>;
 
 const MAX_TOKENS = 16000;
 
@@ -66,10 +63,7 @@ export async function composeBody(
 
   const create: CreateFn =
     deps.create ??
-    ((args) =>
-      getAnthropic().messages.create(args as never) as Promise<{
-        content: Array<{ type: string; text?: string }>;
-      }>);
+    getTextCreator();
 
   const imageBlocks = photos.map((photo) => ({
     type: 'image' as const,
@@ -81,9 +75,9 @@ export async function composeBody(
   }));
 
   const response = await create({
-    model: MODEL,
+    model: getModel(),
     max_tokens: MAX_TOKENS,
-    output_config: { effort: 'high' },
+    output_config: { effort: getReasoningEffort() },
     system: SYSTEM,
     messages: [
       {

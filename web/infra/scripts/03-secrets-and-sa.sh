@@ -6,7 +6,7 @@ SERVICE="${SERVICE_NAME:-sagiggun}"
 SA_NAME="sa-${SERVICE}-run"
 SA_EMAIL="${SA_NAME}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
 REGION="${GCP_REGION:-asia-northeast3}"
-INSTANCE="${SQL_INSTANCE:-sagiggun-pg}"
+INSTANCE="${SQL_INSTANCE:-moonlit-prod}"
 
 gcloud iam service-accounts describe "$SA_EMAIL" >/dev/null 2>&1 \
   || gcloud iam service-accounts create "$SA_NAME" --display-name="sagiggun Cloud Run"
@@ -36,12 +36,14 @@ upsert_secret() {
 : "${ADMIN_PASSWORD:?}"
 : "${SESSION_SECRET:?}"
 : "${ANTHROPIC_API_KEY:?}"
+: "${OPENAI_API_KEY:=disabled-until-configured}"
 : "${OPS_API_TOKEN:?}"
 
 upsert_secret "${SERVICE}-database-url" "$DATABASE_URL"
 upsert_secret "${SERVICE}-admin-password" "$ADMIN_PASSWORD"
 upsert_secret "${SERVICE}-session-secret" "$SESSION_SECRET"
 upsert_secret "${SERVICE}-anthropic-api-key" "$ANTHROPIC_API_KEY"
+upsert_secret "${SERVICE}-openai-api-key" "$OPENAI_API_KEY"
 upsert_secret "${SERVICE}-ops-api-token" "$OPS_API_TOKEN"
 
 # Cloud Build SA needs run admin / ar writer — usually the default Cloud Build SA

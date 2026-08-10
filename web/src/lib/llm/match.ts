@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { getAnthropic, MODEL } from './client';
+import { getModel, getReasoningEffort, getStructuredParser } from './client';
 import type { MatchProfileSlice } from '@/lib/match/filter';
-import type { ParseFn } from './extract';
+import type { ParseFn } from './client';
 import { getEnv } from '@/lib/env';
 import { mockRankMatches } from './mock';
 
@@ -70,8 +70,7 @@ export async function rankMatches(
 
   const parse: ParseFn =
     deps.parse ??
-    ((args) =>
-      getAnthropic().messages.parse(args as never) as Promise<{ parsed_output: unknown }>);
+    getStructuredParser(MatchRankSchema, 'match_rankings');
 
   const payload = {
     topN,
@@ -80,10 +79,10 @@ export async function rankMatches(
   };
 
   const response = await parse({
-    model: MODEL,
+    model: getModel(),
     max_tokens: MAX_TOKENS,
     output_config: {
-      effort: 'medium',
+      effort: getReasoningEffort(),
       format: zodOutputFormat(MatchRankSchema),
     },
     system: MATCH_SYSTEM,
