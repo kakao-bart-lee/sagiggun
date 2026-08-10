@@ -4,7 +4,7 @@
 
 - GCP project: `haruto-snow`
 - Cloud Run: `sagiggun`, region `asia-northeast3`
-- 현재 revision: `sagiggun-00002-28m`, traffic 100%
+- 현재 revision: `sagiggun-00003-l8s`, traffic 100%
 - 직접 origin: `https://sagiggun-w4ywua36ca-du.a.run.app`
 - Cloud SQL: 기존 `moonlit-prod` 인스턴스 재사용
 - 애플리케이션 DB/user: `sagiggun` / `sagiggun_app`
@@ -21,7 +21,9 @@ Cloud SQL 새 인스턴스는 만들지 않는다. 배포 스크립트도 기존
 
 PR #5가 `356b8fcc687711e60e124da594e70f318f5d3867`로 main에 merge된 뒤,
 Cloud Build `4bc01160-89d0-42de-8f37-8f7461b348cf`로 `sagiggun-00002-28m`을
-배포했다. 현재 runtime 설정은 `LLM_MODE=mock`, `LLM_PROVIDER=openai`,
+배포했다. 이후 PR #7(`9269fcde67b3fe49038bd6cfc439f3d7a5189054`)을 merge하고
+Cloud Build `aee4ccfd-10e8-40b3-8799-781f6bcd4f26`으로
+`sagiggun-00003-l8s`를 배포했다. 현재 runtime 설정은 `LLM_MODE=mock`, `LLM_PROVIDER=openai`,
 `LLM_MODEL=gpt-5.6-luna`, `LLM_REASONING=high`다. 유효한 OpenAI 키가 준비되기 전까지
 실제 LLM 호출은 활성화하지 않는다.
 
@@ -29,7 +31,8 @@ Cloud Build `4bc01160-89d0-42de-8f37-8f7461b348cf`로 `sagiggun-00002-28m`을
 preflight 204, 공개 반복 확인 5/5였다.
 
 첫 배포는 유효한 Anthropic API 키가 로컬에 없어 `LLM_MODE=mock` substitution으로
-진행했다. 현재 Secret Manager에는 앱 시크릿 6개가 있으며, 관리자 비밀번호·세션
+진행했다. 현재 Secret Manager에는 앱 시크릿 6개와 UI 런타임 설정 시크릿
+`sagiggun-llm-config`가 있으며, 설정 시크릿은 현재 enabled version 2다. 관리자 비밀번호·세션
 시크릿·OPS 토큰은 랜덤 생성값이다. 값 자체는 이 문서나 저장소에 기록하지 않는다.
 
 `sagiggun-openai-api-key`는 provider 전환 준비를 위해
@@ -97,6 +100,9 @@ npx wrangler@latest deploy --dry-run
 - Cloud Run `/admin/login`: 200
 - Cloud Run `GET /api/profiles` with OPS Bearer: 200
 - Cloudflare `https://love.nngn.ai/admin/login`: 200
+- Cloudflare `https://love.nngn.ai/admin/settings` without session: 307, with session: 200
+- Cloudflare `PUT /api/admin/llm-settings` with mock settings: 200
+- Cloudflare `GET /api/admin/llm-settings` with session: 200, API key 원문 미노출
 - 공개 무인증 `GET /api/profiles`: 401
 - 공개 OPS Bearer `GET /api/profiles`: 200, 초기 응답 `{"profiles":[]}`
 - 공개 CORS preflight: 204
