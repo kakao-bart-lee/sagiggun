@@ -127,6 +127,30 @@
       }
     }
 
+    // 이 핸들의 열린 관심 문의가 있으면 지금 수집한 프로필을 스펙으로 자동 연결한다.
+    // "스펙 답장이 온 대화에서 수집" = 그 문의의 스펙 수신이기 때문이다.
+    // 연결 가능한 상태(접수/스펙 문의중)만 시도하고, 실패는 수집 성공에 영향을 주지 않는다
+    // (관리자에서 수동 연결 가능).
+    let inquiriesAttached = 0;
+    if (api.listOpenInquiries && api.attachInquiryProfile) {
+      try {
+        const open = await api.listOpenInquiries(storage, scraped.handle);
+        const attachable = (open.inquiries || []).filter(
+          (q) => q.status === 'RECEIVED' || q.status === 'SPEC_REQUESTED'
+        );
+        for (const q of attachable) {
+          try {
+            await api.attachInquiryProfile(storage, q.id, profileId);
+            inquiriesAttached += 1;
+          } catch {
+            /* 개별 실패 — 관리자에서 수동 연결 */
+          }
+        }
+      } catch {
+        /* 조회 실패 — 수집은 성공으로 유지 */
+      }
+    }
+
     const { apiBaseUrl } = await api.getConfig(storage);
     return {
       profileId,
@@ -135,6 +159,7 @@
       photoSaved: photoResult.saved?.length ?? 0,
       photoFailed: photoResult.failed?.length ?? 0,
       duplicate: !!(created.duplicates && created.duplicates.length),
+      inquiriesAttached,
     };
   }
 

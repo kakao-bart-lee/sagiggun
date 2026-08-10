@@ -12,6 +12,9 @@ export function AdminTopBar({ right }: { right?: React.ReactNode }) {
         <Link href="/admin" className="hover:text-fog">
           목록
         </Link>
+        <Link href="/admin/inquiries" className="hover:text-fog">
+          관심 문의
+        </Link>
         <Link href="/admin/deliveries" className="hover:text-fog">
           전달 큐
         </Link>

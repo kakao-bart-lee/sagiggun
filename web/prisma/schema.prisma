@@ -27,6 +27,31 @@ enum DeliveryStatus {
   CANCELLED
 }
 
+// 인바운드 관심(게시글을 보고 온 DM/웹 문의) 파이프라인.
+// 수작업 흐름: 접수 → 스펙 문의 → 스펙 수신 → 후보 전달 → 성사/거절.
+enum InquiryStatus {
+  RECEIVED
+  SPEC_REQUESTED
+  SPEC_RECEIVED
+  FORWARDED
+  ACCEPTED
+  DECLINED
+  CLOSED
+}
+
+enum InquirySource {
+  THREADS
+  WEB
+}
+
+enum DeliveryKind {
+  MATCH_PROPOSAL
+  SPEC_REQUEST
+  SPEC_FORWARD
+  CONNECT
+  OTHER
+}
+
 model Profile {
   id     String @id @default(cuid())
   seq    Int?   @unique
@@ -63,6 +88,8 @@ model Profile {
   matchRunsAsSubject    MatchRun[]         @relation("MatchSubject")
   suggestionsAsCandidate MatchSuggestion[] @relation("SuggestionCandidate")
   deliveriesAsRecipient DeliveryItem[]     @relation("DeliveryRecipient")
+  inquiriesAsTarget     Inquiry[]          @relation("InquiryTarget")
+  inquiriesAsFrom       Inquiry[]          @relation("InquiryFrom")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -120,11 +147,16 @@ model MatchSuggestion {
 }
 
 model DeliveryItem {
-  id           String         @id @default(cuid())
-  suggestionId String
-  suggestion   MatchSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
-  toProfileId  String
-  toProfile    Profile        @relation("DeliveryRecipient", fields: [toProfileId], references: [id], onDelete: Cascade)
+  id           String          @id @default(cuid())
+  // 전달의 출처는 둘 중 하나다: LLM 매칭 추천(suggestion) 또는 인바운드 관심(inquiry).
+  suggestionId String?
+  suggestion   MatchSuggestion? @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  inquiryId    String?
+  inquiry      Inquiry?        @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  kind         DeliveryKind    @default(OTHER)
+  // 수신자가 아직 프로필로 등록되지 않았을 수 있다(핸들만 아는 관심자).
+  toProfileId  String?
+  toProfile    Profile?       @relation("DeliveryRecipient", fields: [toProfileId], references: [id], onDelete: Cascade)
   toHandle     String
   body         String         @db.Text
   status       DeliveryStatus @default(PENDING)
@@ -133,7 +165,34 @@ model DeliveryItem {
   updatedAt DateTime @updatedAt
 
   @@index([suggestionId])
+  @@index([inquiryId])
   @@index([toProfileId])
   @@index([status])
   @@index([toHandle])
+}
+
+model Inquiry {
+  id       String  @id @default(cuid())
+  // 관심 대상 = 홍보글 주인공. 게시번호(seq)로 들어와도 Profile로 해석해 저장한다.
+  targetId String
+  target   Profile @relation("InquiryTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  // 관심을 보낸 사람. 스펙 답장을 수집하기 전에는 핸들만 안다.
+  fromHandle    String
+  fromProfileId String?
+  fromProfile   Profile? @relation("InquiryFrom", fields: [fromProfileId], references: [id], onDelete: SetNull)
+
+  source InquirySource @default(THREADS)
+  // 관심 DM 원문·연락처 등 자유 메모. 원본 보존 원칙.
+  note   String?       @db.Text
+  status InquiryStatus @default(RECEIVED)
+
+  deliveries DeliveryItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([targetId])
+  @@index([fromHandle])
+  @@index([status])
 }

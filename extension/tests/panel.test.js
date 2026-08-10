@@ -536,6 +536,27 @@ describe('전달 큐 수신자 경계', () => {
     );
   });
 
+  it('전달 항목에 종류 라벨을 보여준다', async () => {
+    await storage().setOpsConfig({ apiBaseUrl: 'https://ops.example', apiToken: 'x'.repeat(16) });
+    const target = document.createElement('div');
+    const api = {
+      listDeliveries: vi.fn(async () => ({
+        items: [{ id: 'd1', toHandle: 'sam', body: '문구', kind: 'SPEC_REQUEST' }],
+      })),
+      patchDelivery: vi.fn(),
+    };
+    const collector = { scrapeThread: vi.fn(() => ({ handle: 'sam' })) };
+    const handle = panel().mount({
+      storage: storage(),
+      getTarget: () => target,
+      insert: vi.fn(async () => 'paste'),
+      api,
+      collector,
+    });
+    await handle.refresh();
+    expect(handle.shadow.querySelector('.dmeta').textContent).toContain('스펙 문의');
+  });
+
   it('현재 대화와 다른 수신자 문구는 삽입하지 않는다', async () => {
     await storage().setOpsConfig({ apiBaseUrl: 'https://ops.example', apiToken: 'x'.repeat(16) });
     const { handle, $, insert, api } = mountWithOps({ toHandle: 'other' });
@@ -545,5 +566,66 @@ describe('전달 큐 수신자 경계', () => {
     expect(insert).not.toHaveBeenCalled();
     expect(api.patchDelivery).not.toHaveBeenCalled();
     expect($('.ops-status').textContent).toContain('다른 전달 문구');
+  });
+});
+
+describe('관심 접수', () => {
+  function mountWithInquiry({ handle: chatHandle = 'sam', createInquiry } = {}) {
+    const api = {
+      listDeliveries: vi.fn(async () => ({ items: [] })),
+      patchDelivery: vi.fn(),
+      createInquiry:
+        createInquiry ?? vi.fn(async () => ({ inquiry: { id: 'inq1' }, reused: false })),
+    };
+    const collector = { scrapeThread: vi.fn(() => ({ handle: chatHandle })) };
+    const handle = panel().mount({
+      storage: storage(),
+      getTarget: () => document.createElement('div'),
+      insert: vi.fn(async () => 'paste'),
+      api,
+      collector,
+    });
+    return { handle, api, $: (sel) => handle.shadow.querySelector(sel) };
+  }
+
+  it('번호를 넣고 누르면 현재 대화 핸들로 관심을 접수한다', async () => {
+    const { api, $ } = mountWithInquiry();
+    $('.inq-seq').value = '67';
+    $('.inq-add').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(api.createInquiry).toHaveBeenCalledWith(storage(), {
+      targetSeq: 67,
+      fromHandle: 'sam',
+    });
+    expect($('.ops-status').textContent).toContain('관심 접수됨');
+    expect($('.inq-seq').value).toBe('');
+  });
+
+  it('번호가 비었거나 숫자가 아니면 접수하지 않는다', async () => {
+    const { api, $ } = mountWithInquiry();
+    $('.inq-seq').value = 'abc';
+    $('.inq-add').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(api.createInquiry).not.toHaveBeenCalled();
+    expect($('.ops-status').textContent).toContain('게시 번호');
+  });
+
+  it('현재 대화 상대를 못 찾으면 접수하지 않는다', async () => {
+    const { api, $ } = mountWithInquiry({ handle: '' });
+    $('.inq-seq').value = '67';
+    $('.inq-add').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(api.createInquiry).not.toHaveBeenCalled();
+    expect($('.ops-status').textContent).toContain('대화 상대');
+  });
+
+  it('이미 열린 문의면 재사용 안내를 보여준다', async () => {
+    const { $ } = mountWithInquiry({
+      createInquiry: vi.fn(async () => ({ inquiry: { id: 'inq1' }, reused: true })),
+    });
+    $('.inq-seq').value = '67';
+    $('.inq-add').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect($('.ops-status').textContent).toContain('이미 진행 중');
   });
 });

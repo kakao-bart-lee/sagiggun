@@ -1,4 +1,5 @@
 import { AdminTopBar, Panel, StampLink } from '@/components/admin-ui';
+import { DELIVERY_KIND_LABEL } from '@/lib/ui';
 import { prisma } from '@/lib/prisma';
 import { DeliveryActions } from './delivery-actions';
 
@@ -18,6 +19,7 @@ export default async function DeliveriesPage() {
     take: 100,
     include: {
       toProfile: { select: { id: true, sourceHandle: true } },
+      inquiry: { select: { id: true } },
     },
   });
 
@@ -47,12 +49,27 @@ export default async function DeliveriesPage() {
             <li key={item.id}>
               <Panel>
                 <div className="mb-2 flex flex-wrap items-baseline gap-2">
-                  <a
-                    href={`/admin/profiles/${item.toProfileId}`}
-                    className="font-bold text-telop-blue underline"
-                  >
-                    @{item.toHandle}
-                  </a>
+                  {item.toProfileId ? (
+                    <a
+                      href={`/admin/profiles/${item.toProfileId}`}
+                      className="font-bold text-telop-blue underline"
+                    >
+                      @{item.toHandle}
+                    </a>
+                  ) : (
+                    <span className="font-bold text-on-card">@{item.toHandle}</span>
+                  )}
+                  <span className="rounded-full border border-edge px-2 py-0.5 text-[11px] font-bold text-muted-on-card">
+                    {DELIVERY_KIND_LABEL[item.kind] ?? item.kind}
+                  </span>
+                  {item.inquiry && (
+                    <a
+                      href={`/admin/inquiries/${item.inquiry.id}`}
+                      className="text-xs font-bold text-telop-blue underline"
+                    >
+                      문의 보기
+                    </a>
+                  )}
                   <span className="text-xs font-bold text-muted-on-card">
                     {STATUS_KO[item.status] ?? item.status}
                   </span>

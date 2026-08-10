@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { checkRateLimit, recordLoginFailure, recordLoginSuccess, getClientIp } from '@/lib/rate-limit';
+import {
+  checkPublicSubmitLimit,
+  checkRateLimit,
+  getClientIp,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from '@/lib/rate-limit';
 
 // 각 테스트가 서로 다른 key(IP)를 써서, 모듈 스코프의 Map을 테스트끼리 공유해도
 // 간섭하지 않게 한다.
@@ -54,5 +60,33 @@ describe('rate-limit', () => {
 
     const withoutHeader = new Request('http://localhost/x');
     expect(getClientIp(withoutHeader)).toBe('unknown');
+  });
+});
+
+describe('공개 제출 rate limit', () => {
+  it('분당 3회까지 허용하고 4번째는 막는다', () => {
+    const now = 1_700_001_000_000;
+    const key = 'pub-a';
+    expect(checkPublicSubmitLimit(key, now).limited).toBe(false);
+    expect(checkPublicSubmitLimit(key, now + 1).limited).toBe(false);
+    expect(checkPublicSubmitLimit(key, now + 2).limited).toBe(false);
+    const fourth = checkPublicSubmitLimit(key, now + 3);
+    expect(fourth.limited).toBe(true);
+    expect(fourth.retryAfterMs).toBeGreaterThan(0);
+  });
+
+  it('창(1분)이 지나면 다시 허용한다', () => {
+    const now = 1_700_002_000_000;
+    const key = 'pub-b';
+    for (let i = 0; i < 3; i += 1) checkPublicSubmitLimit(key, now + i);
+    expect(checkPublicSubmitLimit(key, now + 10).limited).toBe(true);
+    expect(checkPublicSubmitLimit(key, now + 60_001).limited).toBe(false);
+  });
+
+  it('키(IP)별로 독립이다', () => {
+    const now = 1_700_003_000_000;
+    for (let i = 0; i < 3; i += 1) checkPublicSubmitLimit('pub-c', now + i);
+    expect(checkPublicSubmitLimit('pub-c', now + 5).limited).toBe(true);
+    expect(checkPublicSubmitLimit('pub-d', now + 5).limited).toBe(false);
   });
 });
