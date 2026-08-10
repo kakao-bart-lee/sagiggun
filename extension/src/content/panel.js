@@ -72,6 +72,11 @@
     const opsApi = api || NS.api;
     const opsCollector = collector || NS.collector;
 
+    function activeHandle() {
+      const scraped = opsCollector?.scrapeThread?.(doc);
+      return String(scraped?.handle || '').replace(/^@/, '').trim().toLowerCase();
+    }
+
     let editingId = null;
 
     // statusEl.dataset.source로 이 메시지를 누가 띄웠는지 표시해 둔다.
@@ -135,8 +140,16 @@
         dlistEl.appendChild(empty);
         return;
       }
+      const handle = activeHandle();
+      if (!handle) {
+        const empty = doc.createElement('li');
+        empty.className = 'empty';
+        empty.textContent = '현재 대화 상대를 찾지 못했습니다.';
+        dlistEl.appendChild(empty);
+        return;
+      }
       try {
-        const data = await opsApi.listDeliveries(storage, { status: 'PENDING' });
+        const data = await opsApi.listDeliveries(storage, { status: 'PENDING', handle });
         const items = data.items || [];
         if (!items.length) {
           const empty = doc.createElement('li');
@@ -149,6 +162,7 @@
           const li = doc.createElement('li');
           li.className = 'ditem';
           li.dataset.id = item.id;
+          li.dataset.toHandle = item.toHandle || '';
 
           const meta = doc.createElement('div');
           meta.className = 'dmeta';
@@ -284,6 +298,16 @@
       const body = bodyEl?.textContent || '';
 
       if (clicked.closest('.d-insert')) {
+        const handle = activeHandle();
+        if (!handle) {
+          setOpsStatus('현재 대화 상대를 찾지 못했습니다.', 'warn');
+          return;
+        }
+        const recipient = String(item.dataset.toHandle || '').replace(/^@/, '').trim().toLowerCase();
+        if (!recipient || recipient !== handle) {
+          setOpsStatus('현재 대화 상대와 다른 전달 문구는 삽입할 수 없습니다.', 'error');
+          return;
+        }
         const target = getTarget();
         if (!target) {
           setOpsStatus('입력창을 먼저 클릭하세요.', 'warn');

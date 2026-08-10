@@ -14,12 +14,13 @@ COPY . .
 # 빌드 전용 더미 값을 넣는다 — run 스테이지는 base에서 새로 시작하므로 이 값을 물려받지
 # 않고, 실제 값은 Cloud Run/docker-compose가 컨테이너 기동 시 주입한다.
 ENV DATABASE_URL=postgresql://build:build@localhost:5432/build \
-    ADMIN_PASSWORD=build-time-placeholder \
-    SESSION_SECRET=build-time-placeholder-not-a-real-secret-value \
-    ANTHROPIC_API_KEY=build-time-placeholder \
     PHOTO_DIR=/data/photos \
     LLM_MODE=live
-RUN pnpm db:generate && pnpm build
+RUN export ADMIN_PASSWORD=build-time-placeholder \
+    SESSION_SECRET=build-time-placeholder-not-a-real-secret-value \
+    ANTHROPIC_API_KEY=build-time-placeholder \
+    && pnpm db:generate \
+    && pnpm build
 
 FROM base AS run
 ENV NODE_ENV=production \

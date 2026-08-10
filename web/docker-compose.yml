@@ -41,6 +41,7 @@ services:
       PHOTO_DIR: /data/photos
       PORT: "8080"
       LLM_MODE: ${LLM_MODE:-live}
+      EXTENSION_CORS_ORIGINS: ${EXTENSION_CORS_ORIGINS:-}
     volumes:
       - photo_data:/data/photos
 

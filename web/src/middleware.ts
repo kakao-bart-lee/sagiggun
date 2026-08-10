@@ -12,6 +12,34 @@ import {
 // 적혀 있어 하나만 바뀌는 것)을 애초에 없앤다.
 const LOGIN_PATH = '/admin/login';
 const PUBLIC_PATHS = [LOGIN_PATH, '/api/auth/login'];
+const DEFAULT_EXTENSION_CORS_ORIGINS = [
+  'https://www.threads.com',
+  'https://threads.com',
+  'https://www.threads.net',
+  'https://threads.net',
+];
+
+export function extensionCorsOrigin(origin: string | null, configured?: string): string | null {
+  if (!origin) return null;
+  const allowed = new Set(
+    (configured?.trim() ? configured.split(',') : DEFAULT_EXTENSION_CORS_ORIGINS)
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
+  return allowed.has(origin) ? origin : null;
+}
+
+function withCors(response: NextResponse, origin: string | null, preflight = false): NextResponse {
+  if (!origin) return response;
+  response.headers.set('Access-Control-Allow-Origin', origin);
+  response.headers.set('Vary', 'Origin');
+  if (preflight) {
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    response.headers.set('Access-Control-Max-Age', '600');
+  }
+  return response;
+}
 
 export type GateDecision = { kind: 'allow' } | { kind: 'unauthorized' } | { kind: 'redirect'; to: string };
 
@@ -70,6 +98,18 @@ export async function evaluateGate(
 // 래퍼다 — 실제 인증 판단 로직은 전부 evaluateGate()에 있다.
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const corsOrigin = extensionCorsOrigin(
+    request.headers.get('origin'),
+    process.env.EXTENSION_CORS_ORIGINS
+  );
+
+  if (pathname.startsWith('/api/') && request.method === 'OPTIONS') {
+    if (request.headers.has('origin') && !corsOrigin) {
+      return NextResponse.json({ error: '허용되지 않은 origin입니다.' }, { status: 403 });
+    }
+    return withCors(new NextResponse(null, { status: 204 }), corsOrigin, true);
+  }
+
   const secret = process.env.SESSION_SECRET;
   const sessionToken = request.cookies.get(SESSION_COOKIE)?.value ?? '';
   const opsApiToken = process.env.OPS_API_TOKEN?.trim() || null;
@@ -85,14 +125,17 @@ export async function middleware(request: NextRequest) {
 
   switch (decision.kind) {
     case 'allow':
-      return NextResponse.next();
+      return withCors(NextResponse.next(), corsOrigin);
     case 'unauthorized':
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+      return withCors(
+        NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 }),
+        corsOrigin
+      );
     case 'redirect': {
       const url = request.nextUrl.clone();
       url.pathname = decision.to;
       url.search = '';
-      return NextResponse.redirect(url);
+      return withCors(NextResponse.redirect(url), corsOrigin);
     }
   }
 }

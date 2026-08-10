@@ -10,27 +10,50 @@
       .replace(/[^a-zA-Z0-9._]/g, '');
   }
 
+  const BUBBLE_SELECTOR = '[data-pressable-container], [role="row"], article, div[dir="auto"]';
+
+  function findConversationRoot(doc = document) {
+    // Threads의 DM 본문은 main 안에 있고, 좌측 내비게이션·추천 영역은 main 밖에
+    // 있다. 대화 컨테이너를 못 찾으면 body 전체를 긁지 않고 수집을 중단한다.
+    return (
+      doc.querySelector('[role="main"], main') ||
+      doc.querySelector('header a[href*="/@"]')?.closest('[role="region"]') ||
+      null
+    );
+  }
+
+  function firstHandleText(root, doc) {
+    const link =
+      root.querySelector('header a[href*="/@"]') ||
+      root.querySelector('a[href*="/@"] span') ||
+      doc.querySelector('header a[href*="/@"]') ||
+      doc.querySelector('a[href*="/@"] span');
+    return link?.textContent || '';
+  }
+
   /**
    * Threads DM 대화에서 상대 핸들·본문·이미지 URL을 best-effort로 뽑는다.
    * DOM이 바뀌면 빈 결과가 나올 수 있다.
    */
   function scrapeThread(doc = document) {
+    const root = findConversationRoot(doc);
+    if (!root) return { handle: '', rawText: '', imageUrls: [] };
     const handle =
-      normalizeHandle(
-        doc.querySelector('header a[href*="/@"]')?.textContent ||
-          doc.querySelector('a[href*="/@"] span')?.textContent ||
-          ''
-      ) ||
+      normalizeHandle(firstHandleText(root, doc)) ||
       normalizeHandle(
         (doc.querySelector('title')?.textContent || '').match(/@([a-zA-Z0-9._]+)/)?.[1]
       );
 
-    const bubbles = Array.from(
-      doc.querySelectorAll('[data-pressable-container], [role="row"], article, div[dir="auto"]')
-    );
+    const bubbles = Array.from(root.querySelectorAll(BUBBLE_SELECTOR)).filter((el) => {
+      // 부모 컨테이너와 자식 메시지가 모두 잡히면 부모의 innerText가 사이드바·
+      // 액션 문구까지 함께 삼킨다. leaf 후보만 남긴다.
+      const nested = el.querySelector(BUBBLE_SELECTOR);
+      return !nested || (el.matches('div[dir="auto"]') && !el.querySelector('div[dir="auto"]'));
+    });
     const texts = [];
     const seen = new Set();
     for (const el of bubbles) {
+      if (el.closest('nav, aside, header, [role="navigation"]')) continue;
       const t = (el.innerText || el.textContent || '').trim();
       if (t.length < 8 || t.length > 4000) continue;
       if (seen.has(t)) continue;
@@ -43,7 +66,11 @@
 
     const rawText = texts.join('\n\n').trim();
 
-    const imageUrls = Array.from(doc.querySelectorAll('img[src^="http"]'))
+    const imageUrls = Array.from(root.querySelectorAll('img[src^="http"]'))
+      .filter((img) => {
+        if (img.closest('nav, aside, header, [role="navigation"], a[href*="/@"]')) return false;
+        return !!img.closest(BUBBLE_SELECTOR);
+      })
       .map((img) => img.currentSrc || img.src)
       .filter((src) => /cdninstagram|fbcdn|scontent|threads/i.test(src))
       .slice(0, 10);
@@ -111,5 +138,11 @@
     };
   }
 
-  NS.collector = { scrapeThread, fetchImagesAsFiles, collectAndUpload, normalizeHandle };
+  NS.collector = {
+    scrapeThread,
+    fetchImagesAsFiles,
+    collectAndUpload,
+    normalizeHandle,
+    findConversationRoot,
+  };
 })();

@@ -56,6 +56,23 @@ gcloud run services describe sagiggun --region=asia-northeast3 --format='value(s
 2. API Base URL = Cloudflare 도메인 또는 `*.run.app` URL
 3. 확장은 Bearer로만 `/api/*` 호출 (관리 HTML은 세션 로그인)
 
+## Cloudflare Worker 앞단
+
+Cloud Run의 `run.app` 주소를 확장 옵션에 직접 넣지 않고 공개 hostname을 사용할 경우,
+저장소의 [`cloudflare/worker`](../../cloudflare/worker) 프록시를 앞단에 배포합니다.
+Worker는 Cloud Run URL을 `ORIGIN_URL` 변수로 받아 모든 경로를 전달합니다.
+
+```bash
+cd cloudflare/worker
+export CLOUD_RUN_URL="$(gcloud run services describe sagiggun \
+  --region=asia-northeast3 --format='value(status.url)')"
+npx wrangler@latest deploy --dry-run --var "ORIGIN_URL:${CLOUD_RUN_URL}"
+npx wrangler@latest deploy --var "ORIGIN_URL:${CLOUD_RUN_URL}"
+```
+
+먼저 `workers.dev` 주소로 `/admin/login`과 Bearer API를 확인한 뒤, 실제 zone에 Custom
+Domain을 연결합니다. domain/zone 정보가 정해지기 전에는 route를 자동 생성하지 않습니다.
+
 ## 롤백
 
 ```bash

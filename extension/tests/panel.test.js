@@ -16,6 +16,23 @@ function mountWith({ target = null, insert = vi.fn(async () => 'paste') } = {}) 
            $$: (sel) => Array.from(handle.shadow.querySelectorAll(sel)) };
 }
 
+function mountWithOps({ target = document.createElement('div'), toHandle = 'sam' } = {}) {
+  const api = {
+    listDeliveries: vi.fn(async () => ({ items: [{ id: 'd1', toHandle, body: '전달 문구' }] })),
+    patchDelivery: vi.fn(async () => ({ status: 'INSERTED' })),
+  };
+  const collector = { scrapeThread: vi.fn(() => ({ handle: 'sam' })) };
+  const insert = vi.fn(async () => 'paste');
+  const handle = panel().mount({
+    storage: storage(),
+    getTarget: () => target,
+    insert,
+    api,
+    collector,
+  });
+  return { handle, api, collector, insert, $: (sel) => handle.shadow.querySelector(sel) };
+}
+
 describe('panel.mount', () => {
   it('documentElement에 shadow 호스트를 붙인다', () => {
     const { handle } = mountWith();
@@ -505,5 +522,28 @@ describe('updateTargetState', () => {
     // 있음) 클립보드 안내는 no-target 경고가 아니므로 지워지면 안 된다.
     handle.updateTargetState();
     expect($('.status').textContent).toContain('클립보드');
+  });
+});
+
+describe('전달 큐 수신자 경계', () => {
+  it('현재 대화 핸들로만 큐를 조회한다', async () => {
+    await storage().setOpsConfig({ apiBaseUrl: 'https://ops.example', apiToken: 'x'.repeat(16) });
+    const { handle, api } = mountWithOps();
+    await handle.refresh();
+    expect(api.listDeliveries).toHaveBeenCalledWith(
+      storage(),
+      { status: 'PENDING', handle: 'sam' }
+    );
+  });
+
+  it('현재 대화와 다른 수신자 문구는 삽입하지 않는다', async () => {
+    await storage().setOpsConfig({ apiBaseUrl: 'https://ops.example', apiToken: 'x'.repeat(16) });
+    const { handle, $, insert, api } = mountWithOps({ toHandle: 'other' });
+    await handle.refresh();
+    $('.dlist .d-insert').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(insert).not.toHaveBeenCalled();
+    expect(api.patchDelivery).not.toHaveBeenCalled();
+    expect($('.ops-status').textContent).toContain('다른 전달 문구');
   });
 });
