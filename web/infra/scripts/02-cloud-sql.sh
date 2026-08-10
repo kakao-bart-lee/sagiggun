@@ -1,21 +1,16 @@
 #!/usr/bin/env bash
-# 02 — Cloud SQL Postgres (db-f1-micro)
+# 02 — Existing Cloud SQL Postgres database/user
 set -euo pipefail
 : "${GCP_PROJECT_ID:?}"
 REGION="${GCP_REGION:-asia-northeast3}"
-INSTANCE="${SQL_INSTANCE:-sagiggun-pg}"
-DB_NAME="${DB_NAME:-matching}"
-DB_USER="${DB_USER:-matching}"
+INSTANCE="${SQL_INSTANCE:-moonlit-prod}"
+DB_NAME="${DB_NAME:-sagiggun}"
+DB_USER="${DB_USER:-sagiggun_app}"
 DB_PASS="${DB_PASS:?set DB_PASS}"
 
 if ! gcloud sql instances describe "$INSTANCE" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
-  gcloud sql instances create "$INSTANCE" \
-    --database-version=POSTGRES_16 \
-    --tier=db-f1-micro \
-    --region="$REGION" \
-    --storage-size=10GB \
-    --storage-auto-increase \
-    --project="$GCP_PROJECT_ID"
+  echo "Existing Cloud SQL instance not found: $INSTANCE (no instance will be created)" >&2
+  exit 1
 fi
 
 gcloud sql databases describe "$DB_NAME" --instance="$INSTANCE" >/dev/null 2>&1 \

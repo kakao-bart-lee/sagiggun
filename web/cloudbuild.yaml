@@ -7,14 +7,18 @@
 # 사전: infra/scripts/*.sh 및 docs/deploy-gcp.md 참고
 #
 # 플레이스홀더를 실제 값으로 바꾸거나, 제출 시 substitutions 사용:
-#   --substitutions=_REGION=asia-northeast3,_SERVICE=sagiggun,_AR_REPO=sagiggun,_SQL_INSTANCE=sagiggun-pg
+#   --substitutions=_REGION=asia-northeast3,_SERVICE=sagiggun,_AR_REPO=sagiggun,_SQL_INSTANCE=moonlit-prod,_LLM_MODE=live,_LLM_PROVIDER=openai,_LLM_MODEL=gpt-5.6-luna,_LLM_REASONING=high
 
 substitutions:
   _REGION: asia-northeast3
   _SERVICE: sagiggun
   _AR_REPO: sagiggun
-  _SQL_INSTANCE: sagiggun-pg
+  _SQL_INSTANCE: moonlit-prod
   _SA: sa-sagiggun-run
+  _LLM_MODE: live
+  _LLM_PROVIDER: openai
+  _LLM_MODEL: gpt-5.6-luna
+  _LLM_REASONING: high
 
 steps:
   - name: "bash"
@@ -56,8 +60,8 @@ steps:
           --cpu-boost \
           --service-account=${_SA}@$PROJECT_ID.iam.gserviceaccount.com \
           --add-cloudsql-instances=$PROJECT_ID:${_REGION}:${_SQL_INSTANCE} \
-          --set-env-vars=NODE_ENV=production,LLM_MODE=live,PHOTO_DIR=/tmp/photos,PHOTO_BUCKET=${_SERVICE}-photos \
-          --set-secrets=DATABASE_URL=${_SERVICE}-database-url:latest,ADMIN_PASSWORD=${_SERVICE}-admin-password:latest,SESSION_SECRET=${_SERVICE}-session-secret:latest,ANTHROPIC_API_KEY=${_SERVICE}-anthropic-api-key:latest,OPS_API_TOKEN=${_SERVICE}-ops-api-token:latest
+          --set-env-vars=NODE_ENV=production,LLM_MODE=${_LLM_MODE},LLM_PROVIDER=${_LLM_PROVIDER},LLM_MODEL=${_LLM_MODEL},LLM_REASONING=${_LLM_REASONING},PHOTO_DIR=/tmp/photos,PHOTO_BUCKET=${_SERVICE}-photos \
+          --set-secrets=DATABASE_URL=${_SERVICE}-database-url:latest,ADMIN_PASSWORD=${_SERVICE}-admin-password:latest,SESSION_SECRET=${_SERVICE}-session-secret:latest,ANTHROPIC_API_KEY=${_SERVICE}-anthropic-api-key:latest,OPENAI_API_KEY=${_SERVICE}-openai-api-key:latest,OPS_API_TOKEN=${_SERVICE}-ops-api-token:latest
     timeout: 300s
 
 options:

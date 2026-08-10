@@ -15,10 +15,14 @@ COPY . .
 # 않고, 실제 값은 Cloud Run/docker-compose가 컨테이너 기동 시 주입한다.
 ENV DATABASE_URL=postgresql://build:build@localhost:5432/build \
     PHOTO_DIR=/data/photos \
-    LLM_MODE=live
+    LLM_MODE=live \
+    LLM_PROVIDER=openai \
+    LLM_MODEL=gpt-5.6-luna \
+    LLM_REASONING=high
 RUN export ADMIN_PASSWORD=build-time-placeholder \
     SESSION_SECRET=build-time-placeholder-not-a-real-secret-value \
     ANTHROPIC_API_KEY=build-time-placeholder \
+    OPENAI_API_KEY=build-time-placeholder \
     && pnpm db:generate \
     && pnpm build
 

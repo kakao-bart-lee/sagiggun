@@ -42,7 +42,12 @@ pnpm dev
 docker compose up -d --build
 ```
 
-`ADMIN_PASSWORD`, `SESSION_SECRET`, `ANTHROPIC_API_KEY` 를 환경에 넣어야 합니다. 확장 API를 쓰려면 `OPS_API_TOKEN`도 넣습니다. 사진은 `photo_data` 볼륨에 남습니다. 마이그레이션은 컨테이너 시작 시 자동 적용됩니다.
+`ADMIN_PASSWORD`, `SESSION_SECRET` 및 선택한 provider의 API 키를 환경에 넣어야 합니다.
+기본 provider는 OpenAI이며 기본 모델은 `gpt-5.6-luna`, reasoning은 `high`입니다.
+Anthropic으로 바꾸려면 `LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...`를 설정합니다.
+모델을 직접 지정하려면 `LLM_MODEL=...`을 사용합니다. 확장 API를 쓰려면
+`OPS_API_TOKEN`도 넣습니다. 사진은 `photo_data` 볼륨에 남습니다. 마이그레이션은
+컨테이너 시작 시 자동 적용됩니다.
 
 ### 리버스 프록시가 필요합니다
 

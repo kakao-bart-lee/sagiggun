@@ -6,6 +6,7 @@ const full = {
   ADMIN_PASSWORD: 'pw',
   SESSION_SECRET: 'a'.repeat(32),
   ANTHROPIC_API_KEY: 'sk-ant-x',
+  OPENAI_API_KEY: 'sk-openai-x',
   PHOTO_DIR: './.photos',
 };
 
@@ -40,5 +41,52 @@ describe('getEnv', () => {
   it('LLM_MODE 기본은 live, mock 가능', () => {
     expect(getEnv(full).llmMode).toBe('live');
     expect(getEnv({ ...full, LLM_MODE: 'mock' }).llmMode).toBe('mock');
+  });
+
+  it('기본 provider는 OpenAI이고 모델은 선택사항이다', () => {
+    const env = getEnv(full);
+    expect(env.llmProvider).toBe('openai');
+    expect(env.llmModel).toBeNull();
+    expect(env.anthropicApiKey).toBe('sk-ant-x');
+    expect(env.openaiApiKey).toBe('sk-openai-x');
+    expect(env.llmReasoning).toBe('high');
+  });
+
+  it('빈 LLM_MODEL은 미설정으로 취급한다', () => {
+    expect(getEnv({ ...full, LLM_MODEL: '' }).llmModel).toBeNull();
+  });
+
+  it('OpenAI provider는 OpenAI 키와 모델을 읽는다', () => {
+    const env = getEnv({
+      ...full,
+      ANTHROPIC_API_KEY: undefined,
+      OPENAI_API_KEY: 'sk-openai-x',
+      LLM_PROVIDER: 'openai',
+      LLM_MODEL: 'gpt-test',
+    });
+    expect(env.llmProvider).toBe('openai');
+    expect(env.llmModel).toBe('gpt-test');
+    expect(env.openaiApiKey).toBe('sk-openai-x');
+    expect(env.anthropicApiKey).toBeNull();
+  });
+
+  it('reasoning은 high가 기본이고 명시적으로 조정할 수 있다', () => {
+    expect(getEnv({ ...full, LLM_REASONING: 'medium' }).llmReasoning).toBe('medium');
+  });
+
+  it('live provider에 해당하는 키가 없으면 실패한다', () => {
+    expect(() =>
+      getEnv({ ...full, ANTHROPIC_API_KEY: undefined, LLM_PROVIDER: 'anthropic' })
+    ).toThrow(/ANTHROPIC_API_KEY/);
+    expect(() =>
+      getEnv({ ...full, OPENAI_API_KEY: undefined, LLM_PROVIDER: 'openai' })
+    ).toThrow(/OPENAI_API_KEY/);
+  });
+
+  it('mock은 provider 키 없이도 설정할 수 있다', () => {
+    const { ANTHROPIC_API_KEY, OPENAI_API_KEY, ...withoutKey } = full;
+    expect(
+      getEnv({ ...withoutKey, LLM_MODE: 'mock', LLM_PROVIDER: 'openai' }).llmMode
+    ).toBe('mock');
   });
 });

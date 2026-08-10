@@ -1,7 +1,8 @@
 # sagiggun 배포 체크리스트
 
 대상은 `web/` Cloud Run 서비스와 선택적인 `cloudflare/worker` 프록시다.
-현재 저장소에는 Cloud Run 서비스·Cloudflare hostname이 자동 생성되어 있지 않으므로,
+현재 저장소는 Cloud Run 서비스 `sagiggun`과 Cloudflare hostname `love.nngn.ai`를
+기준으로 하며,
 프로젝트·도메인·권한을 확인한 뒤 실행한다.
 
 ## Go / No-Go
@@ -11,7 +12,7 @@
 - [ ] 배포할 Git SHA를 기록한다: `git rev-parse HEAD`
 - [ ] `gcloud config get-value project`가 의도한 GCP 프로젝트인지 확인한다.
 - [ ] `GCP_REGION`, `SERVICE_NAME`, `SQL_INSTANCE`를 확정한다.
-- [ ] `ADMIN_PASSWORD`, `SESSION_SECRET(32자 이상)`, `ANTHROPIC_API_KEY`,
+- [ ] `ADMIN_PASSWORD`, `SESSION_SECRET(32자 이상)`, 선택한 provider의 API 키,
       `OPS_API_TOKEN(16자 이상)`을 Secret Manager에 넣을 준비가 되어 있다.
 - [ ] `pnpm typecheck`, `pnpm test`, `npm test`, `pnpm build`가 통과한다.
 - [ ] `./scripts/e2e-prepare.sh && pnpm test:e2e`가 통과한다.
@@ -38,11 +39,12 @@ cd web
 export GCP_PROJECT_ID='...'
 export GCP_REGION='asia-northeast3'
 export SERVICE_NAME='sagiggun'
-export SQL_INSTANCE='sagiggun-pg'
+export SQL_INSTANCE='moonlit-prod' # 기존 인스턴스; 새 Cloud SQL 인스턴스는 만들지 않음
 export DB_PASS='...'
 export ADMIN_PASSWORD='...'
 export SESSION_SECRET="$(openssl rand -hex 32)"
 export ANTHROPIC_API_KEY='...'
+export OPENAI_API_KEY='...' # OpenAI provider를 사용할 때만 실제 키
 export OPS_API_TOKEN="$(openssl rand -hex 16)"
 
 ./infra/scripts/00-enable-apis.sh
@@ -100,9 +102,8 @@ npx wrangler@latest login
 npx wrangler@latest deploy --var "ORIGIN_URL:${CLOUD_RUN_URL}"
 ```
 
-초기 `workers.dev` 주소에서 로그인·Bearer API·preflight를 확인한 후 실제 Custom
-Domain을 연결한다. Cloudflare zone/domain/account가 정해지기 전에는 route를
-자동 생성하지 않는다.
+`https://love.nngn.ai`에서 로그인·Bearer API·preflight를 확인한다. Custom Domain은
+`cloudflare/worker/wrangler.jsonc`의 `custom_domain = true` route로 유지한다.
 
 ## 롤백
 

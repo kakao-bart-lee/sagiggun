@@ -1,0 +1,19 @@
+# Keep local dependencies and generated output out of the Cloud Build context.
+node_modules/
+.next/
+.photos/
+test-results/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.git/
+.github/
+e2e/
+tests/
+docs/
+infra/
+docker-compose*.yml
+playwright.config.ts
+vitest.config.ts
+vitest.setup.ts

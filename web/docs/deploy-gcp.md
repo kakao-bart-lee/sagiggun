@@ -10,10 +10,10 @@
 |---|---|
 | Cloud Run | `sagiggun` |
 | Artifact Registry | `sagiggun` (docker, asia-northeast3) |
-| Cloud SQL | `sagiggun-pg` (Postgres 16, db-f1-micro) |
+| Cloud SQL | 기존 `moonlit-prod` 인스턴스 안의 `sagiggun` DB (`sagiggun_app` 사용자) |
 | GCS | `sagiggun-photos` (`PHOTO_BUCKET`) |
 | Runtime SA | `sa-sagiggun-run@PROJECT.iam.gserviceaccount.com` |
-| Secrets | `sagiggun-database-url`, `…-admin-password`, `…-session-secret`, `…-anthropic-api-key`, `…-ops-api-token` |
+| Secrets | `sagiggun-database-url`, `…-admin-password`, `…-session-secret`, `…-anthropic-api-key`, `…-openai-api-key`, `…-ops-api-token` |
 
 사진은 Cloud Run 로컬 디스크가 ephemeral이라 **GCS(`PHOTO_BUCKET`)를 써야 합니다.**  
 로컬/docker-compose는 `PHOTO_DIR` 파일 저장을 유지합니다.
@@ -24,16 +24,21 @@
 cd web
 export GCP_PROJECT_ID=YOUR_PROJECT   # placeholder — 실제 프로젝트로 교체
 export GCP_REGION=asia-northeast3
-export DB_PASS='…'                   # 강한 비밀번호
+export SQL_INSTANCE=moonlit-prod     # 기존 인스턴스 사용, 새 인스턴스는 만들지 않음
+export DB_NAME=sagiggun
+export DB_USER=sagiggun_app
+export DB_PASS='…'                   # 새 DB 사용자 비밀번호
 export ADMIN_PASSWORD='…'
 export SESSION_SECRET="$(openssl rand -hex 32)"
 export ANTHROPIC_API_KEY='sk-ant-…'
+# OpenAI로 운영할 때만 실제 키를 넣습니다. 생략하면 mock/Anthropic 준비용 placeholder가 저장됩니다.
+export OPENAI_API_KEY='sk-…'
 export OPS_API_TOKEN="$(openssl rand -hex 16)"
 
 chmod +x infra/scripts/*.sh
 ./infra/scripts/00-enable-apis.sh
 ./infra/scripts/01-artifact-and-bucket.sh
-./infra/scripts/02-cloud-sql.sh        # 출력 DATABASE_URL을 export
+./infra/scripts/02-cloud-sql.sh        # 기존 인스턴스에 DB/사용자 생성, DATABASE_URL 출력
 export DATABASE_URL='postgresql://…' # 02 출력값
 ./infra/scripts/03-secrets-and-sa.sh
 ```
@@ -45,6 +50,9 @@ Cloud Build 기본 SA에 Artifact Registry Writer + Cloud Run Admin + Service Ac
 ```bash
 cd web
 gcloud builds submit --config cloudbuild.yaml --project="$GCP_PROJECT_ID" .
+# 기본 OpenAI 설정은 gpt-5.6-luna / reasoning high다. 다른 provider/model을 쓸 때만 덮어쓴다.
+# gcloud builds submit --config cloudbuild.yaml --project="$GCP_PROJECT_ID" \
+#   --substitutions=_LLM_PROVIDER=anthropic,_LLM_MODEL=claude-sonnet-5,_LLM_REASONING=high .
 gcloud run services describe sagiggun --region=asia-northeast3 --format='value(status.url)'
 ```
 
@@ -70,8 +78,22 @@ npx wrangler@latest deploy --dry-run --var "ORIGIN_URL:${CLOUD_RUN_URL}"
 npx wrangler@latest deploy --var "ORIGIN_URL:${CLOUD_RUN_URL}"
 ```
 
-먼저 `workers.dev` 주소로 `/admin/login`과 Bearer API를 확인한 뒤, 실제 zone에 Custom
-Domain을 연결합니다. domain/zone 정보가 정해지기 전에는 route를 자동 생성하지 않습니다.
+현재 `nngn.ai` zone에 `love.nngn.ai`가 `sagiggun-proxy` Worker의 Custom Domain으로
+연결되어 있습니다. 배포 후 확인:
+
+```bash
+curl -I https://love.nngn.ai/admin/login
+curl -sS https://love.nngn.ai/api/profiles \
+  -H "Authorization: Bearer $OPS_API_TOKEN"
+curl -i -X OPTIONS https://love.nngn.ai/api/profiles \
+  -H 'Origin: https://www.threads.com' \
+  -H 'Access-Control-Request-Method: GET' \
+  -H 'Access-Control-Request-Headers: authorization,content-type'
+```
+
+`cloudflare/worker/wrangler.jsonc`에는 `love.nngn.ai`와 Cloud Run origin이 명시되어
+있습니다. 초기 배포는 Cloudflare API MCP로 수행했으며, 로컬 Wrangler를 사용할 때는
+`npx wrangler@latest deploy --dry-run` 후 `deploy`를 실행합니다.
 
 ## 롤백
 
@@ -90,4 +112,4 @@ chmod +x scripts/e2e-prepare.sh
 pnpm test:e2e
 ```
 
-`LLM_MODE=mock`으로 Claude를 호출하지 않고 시드·결정적 픽스처로 검증합니다.
+`LLM_MODE=mock`으로 provider API를 호출하지 않고 시드·결정적 픽스처로 검증합니다.

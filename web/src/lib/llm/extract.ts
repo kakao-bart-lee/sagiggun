@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { getAnthropic, MODEL } from './client';
+import { getModel, getReasoningEffort, getStructuredParser } from './client';
+import type { ParseFn } from './client';
 import { getEnv } from '@/lib/env';
 import { mockExtract } from './mock';
 
@@ -20,8 +21,6 @@ export const ExtractedSchema = z.object({
 });
 
 export type Extracted = z.infer<typeof ExtractedSchema>;
-
-export type ParseFn = (args: unknown) => Promise<{ parsed_output: unknown }>;
 
 export const EXTRACT_SYSTEM = `당신은 소개팅 신청서를 정리하는 도우미입니다.
 사용자가 보낸 자기소개 원문에서 정해진 항목을 뽑아냅니다.
@@ -49,16 +48,14 @@ export async function extractFields(
 
   const parse: ParseFn =
     deps.parse ??
-    ((args) =>
-      getAnthropic().messages.parse(args as never) as Promise<{ parsed_output: unknown }>);
+    getStructuredParser(ExtractedSchema, 'extracted_profile');
 
   const response = await parse({
-    model: MODEL,
-    // Opus 5는 thinking이 기본으로 켜지고 max_tokens가 thinking과 응답을
-    // 함께 제한한다. 넉넉히 주지 않으면 응답이 잘린다.
+    model: getModel(),
+    // reasoning 토큰과 응답을 함께 고려해 넉넉히 잡는다.
     max_tokens: MAX_TOKENS,
     output_config: {
-      effort: 'medium',
+      effort: getReasoningEffort(),
       format: zodOutputFormat(ExtractedSchema),
     },
     system: EXTRACT_SYSTEM,
