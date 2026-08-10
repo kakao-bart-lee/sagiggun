@@ -127,5 +127,64 @@
 .actions .save { background: #f5f5f5; color: #101010; border-color: #f5f5f5; }
 .actions .cancel { background: none; color: #999; }
 .actions .cancel[hidden] { display: none; }
+
+.ops {
+  border-top: 1px solid #303030;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.ops h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #aaa;
+}
+.ops .collect {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #303030;
+  background: #2a3a4a;
+  color: #f5f5f5;
+  cursor: pointer;
+  font: inherit;
+}
+.ops .collect:hover { background: #345068; }
+.ops-status { margin: 8px 0; min-height: 16px; font-size: 12px; color: #999; }
+.ops-status.ok { color: #4ba3f2; }
+.ops-status.warn { color: #e8b64c; }
+.ops-status.error { color: #f2645a; }
+.dlist { list-style: none; margin: 0; padding: 0; }
+.dlist .empty { color: #777; padding: 8px 4px; font-size: 12px; }
+.ditem {
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 6px;
+  background: #141414;
+}
+.dmeta { font-weight: 600; margin-bottom: 4px; }
+.dbody {
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+  font: inherit;
+  font-size: 12px;
+  color: #ddd;
+  max-height: 80px;
+  overflow: auto;
+}
+.dactions { display: flex; gap: 6px; }
+.dactions button {
+  flex: 1;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #303030;
+  background: #242424;
+  color: #f5f5f5;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.dactions .d-insert { background: #f5f5f5; color: #101010; }
 `;
 })();

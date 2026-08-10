@@ -27,17 +27,21 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # loopback에만 바인딩한다. rate limit이 X-Forwarded-For를 그대로 신뢰하므로
+    # 앱 포트를 직접 인터넷에 노출하면 로그인 무차별 대입 방어가 무력화된다.
+    # 외부 공개는 XFF를 덮어쓰는 리버스 프록시를 앞단에 두고 거기서 전달한다(README 참고).
+    ports:
+      - "127.0.0.1:${APP_PORT:-3100}:8080"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/matching
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       SESSION_SECRET: ${SESSION_SECRET}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPS_API_TOKEN: ${OPS_API_TOKEN:-}
       PHOTO_DIR: /data/photos
-    # loopback에만 바인딩한다. rate limit이 X-Forwarded-For를 그대로 신뢰하므로
-    # 앱 포트를 직접 인터넷에 노출하면 로그인 무차별 대입 방어가 무력화된다.
-    # 외부 공개는 XFF를 덮어쓰는 리버스 프록시를 앞단에 두고 거기서 전달한다(README 참고).
-    ports:
-      - "127.0.0.1:${APP_PORT:-3100}:3000"
+      PORT: "8080"
+      LLM_MODE: ${LLM_MODE:-live}
+      EXTENSION_CORS_ORIGINS: ${EXTENSION_CORS_ORIGINS:-}
     volumes:
       - photo_data:/data/photos
 

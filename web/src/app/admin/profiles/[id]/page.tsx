@@ -11,6 +11,7 @@ import { STATUS_LABEL, statusTone } from '@/lib/ui';
 import { prisma } from '@/lib/prisma';
 import { ProfileEditor } from './editor';
 import { ProfilePhotos } from './photos-panel';
+import { MatchPanel } from './match-panel';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,6 +105,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             finalBody: profile.finalBody,
           }}
         />
+      </div>
+
+      <div className="mt-5">
+        <MatchPanel profileId={profile.id} />
       </div>
     </main>
   );

@@ -19,6 +19,8 @@
         storage: NS.storage,
         getTarget: () => tracker.getTarget(),
         insert: (editor, text) => NS.inserter.insert(editor, text),
+        api: NS.api,
+        collector: NS.collector,
         doc,
       });
     }

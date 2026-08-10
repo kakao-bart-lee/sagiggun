@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Threads 저장된 문구",
-  "description": "threads.com 메시지·게시물 입력창에 저장된 문구를 한 번에 넣습니다.",
-  "version": "0.1.0",
+  "name": "Some Love — Threads 문구·수집",
+  "description": "Threads DM 수집·전달 문구 삽입과 저장된 문구를 지원합니다.",
+  "version": "0.2.0",
   "permissions": ["storage"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "content_scripts": [
     {
       "matches": [
@@ -17,6 +22,8 @@
         "src/content/storage.js",
         "src/content/detector.js",
         "src/content/inserter.js",
+        "src/content/api.js",
+        "src/content/collector.js",
         "src/content/panel.js",
         "src/content/index.js"
       ],

@@ -14,6 +14,19 @@ enum Status {
   ARCHIVED
 }
 
+enum MatchSuggestionStatus {
+  PENDING
+  ACCEPTED
+  DISMISSED
+}
+
+enum DeliveryStatus {
+  PENDING
+  INSERTED
+  DONE
+  CANCELLED
+}
+
 model Profile {
   id     String @id @default(cuid())
   seq    Int?   @unique
@@ -45,7 +58,12 @@ model Profile {
   publishedPostId String?
   publishedAt     DateTime?
 
-  photos    Photo[]
+  photos Photo[]
+
+  matchRunsAsSubject    MatchRun[]         @relation("MatchSubject")
+  suggestionsAsCandidate MatchSuggestion[] @relation("SuggestionCandidate")
+  deliveriesAsRecipient DeliveryItem[]     @relation("DeliveryRecipient")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -65,4 +83,57 @@ model Photo {
   createdAt DateTime @default(now())
 
   @@index([profileId])
+}
+
+model MatchRun {
+  id        String   @id @default(cuid())
+  subjectId String
+  subject   Profile  @relation("MatchSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  suggestions MatchSuggestion[]
+
+  @@index([subjectId])
+}
+
+model MatchSuggestion {
+  id                String                @id @default(cuid())
+  runId             String
+  run               MatchRun              @relation(fields: [runId], references: [id], onDelete: Cascade)
+  candidateId       String
+  candidate         Profile               @relation("SuggestionCandidate", fields: [candidateId], references: [id], onDelete: Cascade)
+  rank              Int
+  score             Float?
+  rationale         String                @db.Text
+  draftForSubject   String                @db.Text
+  draftForCandidate String                @db.Text
+  status            MatchSuggestionStatus @default(PENDING)
+
+  deliveries DeliveryItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([runId])
+  @@index([candidateId])
+  @@index([status])
+}
+
+model DeliveryItem {
+  id           String         @id @default(cuid())
+  suggestionId String
+  suggestion   MatchSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  toProfileId  String
+  toProfile    Profile        @relation("DeliveryRecipient", fields: [toProfileId], references: [id], onDelete: Cascade)
+  toHandle     String
+  body         String         @db.Text
+  status       DeliveryStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([suggestionId])
+  @@index([toProfileId])
+  @@index([status])
+  @@index([toHandle])
 }

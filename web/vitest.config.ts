@@ -6,6 +6,7 @@ export default defineConfig({
     environment: 'node',
     unstubGlobals: true,
     setupFiles: ['./vitest.setup.ts'],
+    include: ['tests/**/*.test.ts'],
   },
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, 'src') },

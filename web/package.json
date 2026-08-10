@@ -11,11 +11,18 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "e2e:prepare": "bash scripts/e2e-prepare.sh",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
     "infra:up": "docker compose up -d postgres",
-    "infra:down": "docker compose down"
+    "infra:down": "docker compose down",
+    "deploy:gcp": "gcloud builds submit --config=cloudbuild.yaml ."
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +30,7 @@
   "packageManager": "pnpm@10.28.2",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
+    "@google-cloud/storage": "^7.19.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "next": "^16.3.0",
@@ -32,6 +40,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
@@ -42,6 +51,7 @@
     "postcss": "^8.5.26",
     "prisma": "^7.9.1",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.21.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }

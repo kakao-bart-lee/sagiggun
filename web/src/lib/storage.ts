@@ -43,6 +43,13 @@ export function assertUploadable(
   }
 }
 
+async function gcsBucket() {
+  const name = getEnv().photoBucket;
+  if (!name) return null;
+  const { Storage } = await import('@google-cloud/storage');
+  return new Storage().bucket(name);
+}
+
 export async function putPhoto(
   profileId: string,
   data: Uint8Array,
@@ -53,6 +60,16 @@ export async function putPhoto(
   if (!ext) throw new Error(`지원하지 않는 이미지 형식입니다: ${contentType}`);
 
   const key = `${profileId}/${crypto.randomUUID()}.${ext}`;
+  const bucket = await gcsBucket();
+  if (bucket) {
+    await bucket.file(key).save(Buffer.from(data), {
+      contentType,
+      resumable: false,
+      metadata: { cacheControl: 'private, max-age=3600' },
+    });
+    return key;
+  }
+
   const root = baseDirOf(baseDir);
   const full = resolveKey(key, root);
   await fs.mkdir(path.dirname(full), { recursive: true });
@@ -61,11 +78,21 @@ export async function putPhoto(
 }
 
 export async function readPhoto(storageKey: string, baseDir?: string): Promise<Uint8Array> {
+  const bucket = await gcsBucket();
+  if (bucket) {
+    const [buf] = await bucket.file(storageKey).download();
+    return new Uint8Array(buf);
+  }
   const full = resolveKey(storageKey, baseDirOf(baseDir));
   return new Uint8Array(await fs.readFile(full));
 }
 
 export async function removePhoto(storageKey: string, baseDir?: string): Promise<void> {
+  const bucket = await gcsBucket();
+  if (bucket) {
+    await bucket.file(storageKey).delete({ ignoreNotFound: true });
+    return;
+  }
   const full = resolveKey(storageKey, baseDirOf(baseDir));
   await fs.rm(full, { force: true });
 }

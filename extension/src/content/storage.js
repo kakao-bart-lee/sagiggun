@@ -154,5 +154,16 @@
     async setSide(side) {
       await write(KEY_SIDE, side === 'left' ? 'left' : 'right');
     },
+
+    async getOpsConfig() {
+      const base = String((await read('apiBaseUrl', '')) || '').replace(/\/$/, '');
+      const token = String((await read('apiToken', '')) || '');
+      return { apiBaseUrl: base, apiToken: token };
+    },
+
+    async setOpsConfig({ apiBaseUrl, apiToken }) {
+      await write('apiBaseUrl', String(apiBaseUrl || '').replace(/\/$/, ''));
+      await write('apiToken', String(apiToken || ''));
+    },
   };
 })();

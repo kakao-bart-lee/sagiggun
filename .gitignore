@@ -5,9 +5,15 @@ node_modules/
 web/node_modules/
 web/.next/
 web/.photos/
+web/.photos-e2e/
 web/.env
 web/*.tsbuildinfo
 web/next-env.d.ts
+web/test-results/
+web/playwright-report/
+web/blob-report/
+cloudflare/worker/.dev.vars
+cloudflare/worker/.wrangler/
 
 # Next.js 16이 `next dev` 실행 시 자동 생성한다 (node_modules/next/dist/server/lib/generate-agent-files.js).
 # 팀 차원에서 커밋하기로 결정하기 전까지는 로컬 산출물로 취급한다.

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { getAnthropic, MODEL } from './client';
+import { getEnv } from '@/lib/env';
+import { mockExtract } from './mock';
 
 export const ExtractedSchema = z.object({
   gender: z.enum(['F', 'M']).nullable(),
@@ -41,6 +43,10 @@ export async function extractFields(
   rawText: string,
   deps: { parse?: ParseFn } = {}
 ): Promise<Extracted> {
+  if (!deps.parse && getEnv().llmMode === 'mock') {
+    return mockExtract(rawText);
+  }
+
   const parse: ParseFn =
     deps.parse ??
     ((args) =>

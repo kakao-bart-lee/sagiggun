@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateGate } from '@/middleware';
+import { evaluateGate, extensionCorsOrigin } from '@/middleware';
 import { createSessionToken } from '@/lib/auth';
 
 const SECRET = 'a'.repeat(32);
@@ -46,5 +46,35 @@ describe('evaluateGate — 미들웨어 게이트 판정', () => {
       kind: 'redirect',
       to: '/admin/login',
     });
+  });
+
+  it('유효한 OPS Bearer면 /api/* 만 통과하고 /admin은 막는다', async () => {
+    const ops = 'ops-token-16chars';
+    expect(
+      await evaluateGate('/api/profiles', SECRET, '', ops, ops)
+    ).toEqual({ kind: 'allow' });
+    expect(
+      await evaluateGate('/admin/profiles', SECRET, '', ops, ops)
+    ).toEqual({ kind: 'redirect', to: '/admin/login' });
+  });
+
+  it('잘못된 Bearer는 막는다', async () => {
+    expect(
+      await evaluateGate('/api/profiles', SECRET, '', 'ops-token-16chars', 'wrong-token-xxxxx')
+    ).toEqual({ kind: 'unauthorized' });
+  });
+});
+
+describe('extensionCorsOrigin — 확장 preflight 경계', () => {
+  it('Threads origin만 기본 허용한다', () => {
+    expect(extensionCorsOrigin('https://www.threads.com')).toBe('https://www.threads.com');
+    expect(extensionCorsOrigin('https://threads.net')).toBe('https://threads.net');
+    expect(extensionCorsOrigin('https://evil.example')).toBeNull();
+  });
+
+  it('배포 환경에서 명시한 origin 목록을 사용할 수 있다', () => {
+    expect(extensionCorsOrigin('https://ops.example', 'https://ops.example, https://other.example'))
+      .toBe('https://ops.example');
+    expect(extensionCorsOrigin('https://www.threads.com', 'https://ops.example')).toBeNull();
   });
 });
