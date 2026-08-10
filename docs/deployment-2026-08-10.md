@@ -52,6 +52,12 @@ gcloud builds submit --config=cloudbuild.yaml --project=haruto-snow \
   --substitutions=_LLM_MODE=live,_LLM_PROVIDER=openai,_LLM_MODEL=gpt-5.6-luna,_LLM_REASONING=high .
 ```
 
+배포 후 관리자 로그인 화면의 `설정` 메뉴(`/admin/settings`)에서 실행 모드, provider,
+모델, reasoning, OpenAI/Anthropic API 키를 변경할 수 있다. 키 입력값은 응답이나 화면에
+다시 표시하지 않고 `sagiggun-llm-config` Secret Manager의 새 버전으로 저장한다. 빈 키로
+저장하면 기존 키를 유지하며, 저장된 키 삭제 체크박스로 명시적으로 제거할 수 있다.
+Secret Manager 리소스가 없는 로컬 환경에서는 읽기 전용으로 표시된다.
+
 ## LLM provider 전환
 
 LiteLLM Proxy는 추가하지 않고 애플리케이션 내부 provider adapter로 전환을 지원한다.

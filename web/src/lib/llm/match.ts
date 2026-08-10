@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { getModel, getReasoningEffort, getStructuredParser } from './client';
+import { getStructuredParser } from './client';
 import type { MatchProfileSlice } from '@/lib/match/filter';
 import type { ParseFn } from './client';
-import { getEnv } from '@/lib/env';
+import { getLlmConfig } from './config';
 import { mockRankMatches } from './mock';
 
 export const MatchRankItemSchema = z.object({
@@ -64,13 +64,14 @@ export async function rankMatches(
 ): Promise<MatchRankItem[]> {
   if (candidates.length === 0 || topN <= 0) return [];
 
-  if (!deps.parse && getEnv().llmMode === 'mock') {
+  const config = await getLlmConfig();
+  if (!deps.parse && config.mode === 'mock') {
     return mockRankMatches(subject, candidates, topN);
   }
 
   const parse: ParseFn =
     deps.parse ??
-    getStructuredParser(MatchRankSchema, 'match_rankings');
+    getStructuredParser(MatchRankSchema, 'match_rankings', config);
 
   const payload = {
     topN,
@@ -79,10 +80,10 @@ export async function rankMatches(
   };
 
   const response = await parse({
-    model: getModel(),
+    model: config.model,
     max_tokens: MAX_TOKENS,
     output_config: {
-      effort: getReasoningEffort(),
+      effort: config.reasoning,
       format: zodOutputFormat(MatchRankSchema),
     },
     system: MATCH_SYSTEM,

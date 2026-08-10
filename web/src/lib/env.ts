@@ -19,6 +19,9 @@ const schema = z.object({
     z.string().trim().min(1).optional()
   ),
   LLM_REASONING: z.enum(['low', 'medium', 'high']).default('high'),
+  // 설정 UI가 저장할 Secret Manager 리소스. 로컬에서는 비워두면 env 설정만 사용한다.
+  GCP_PROJECT_ID: z.string().trim().min(1).optional(),
+  LLM_CONFIG_SECRET: z.string().trim().min(1).optional(),
   // 설정 시 GCS 버킷에 사진 저장 (Cloud Run). 비우면 PHOTO_DIR 로컬 파일.
   PHOTO_BUCKET: z.string().optional(),
 });
@@ -35,6 +38,8 @@ export type Env = {
   llmProvider: 'anthropic' | 'openai';
   llmModel: string | null;
   llmReasoning: 'low' | 'medium' | 'high';
+  gcpProjectId: string | null;
+  llmConfigSecret: string | null;
   photoBucket: string | null;
 };
 
@@ -47,15 +52,10 @@ export function getEnv(source: Record<string, string | undefined> = process.env)
   const v = parsed.data;
   const anthropicApiKey = v.ANTHROPIC_API_KEY?.trim() || null;
   const openaiApiKey = v.OPENAI_API_KEY?.trim() || null;
-  if (v.LLM_MODE === 'live') {
-    const missingKey = v.LLM_PROVIDER === 'anthropic' ? !anthropicApiKey : !openaiApiKey;
-    if (missingKey) {
-      const key = v.LLM_PROVIDER === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
-      throw new Error(`환경변수가 올바르지 않습니다: ${key}`);
-    }
-  }
   const ops = v.OPS_API_TOKEN?.trim() || '';
   const bucket = v.PHOTO_BUCKET?.trim() || '';
+  const projectId = v.GCP_PROJECT_ID?.trim() || '';
+  const configSecret = v.LLM_CONFIG_SECRET?.trim() || '';
   return {
     databaseUrl: v.DATABASE_URL,
     adminPassword: v.ADMIN_PASSWORD,
@@ -68,6 +68,8 @@ export function getEnv(source: Record<string, string | undefined> = process.env)
     llmProvider: v.LLM_PROVIDER,
     llmModel: v.LLM_MODEL ?? null,
     llmReasoning: v.LLM_REASONING,
+    gcpProjectId: projectId || null,
+    llmConfigSecret: configSecret || null,
     photoBucket: bucket || null,
   };
 }

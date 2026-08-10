@@ -3,7 +3,15 @@ import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
 import type { ZodType } from 'zod';
 import { getEnv } from '@/lib/env';
-import type { Env } from '@/lib/env';
+import {
+  DEFAULT_ANTHROPIC_MODEL,
+  DEFAULT_OPENAI_MODEL,
+  requireLlmApiKey,
+  resolveModel,
+  type LlmConfig,
+} from './config';
+
+export { DEFAULT_ANTHROPIC_MODEL, DEFAULT_OPENAI_MODEL, resolveModel } from './config';
 
 export type ParseFn = (args: unknown) => Promise<{ parsed_output: unknown }>;
 
@@ -26,34 +34,38 @@ type ProviderRequest = {
   messages: ProviderMessage[];
 };
 
-export const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-5';
-export const DEFAULT_OPENAI_MODEL = 'gpt-5.6-luna';
-
 let anthropicClient: Anthropic | undefined;
+let anthropicApiKey: string | undefined;
 let openaiClient: OpenAI | undefined;
+let openaiApiKey: string | undefined;
 
-export function getAnthropic(): Anthropic {
-  const apiKey = getEnv().anthropicApiKey;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY가 설정되지 않았습니다.');
-  if (!anthropicClient) anthropicClient = new Anthropic({ apiKey });
+export function getAnthropic(config: LlmConfig): Anthropic {
+  const apiKey = requireLlmApiKey(config);
+  if (config.provider !== 'anthropic') {
+    throw new Error('현재 LLM provider가 Anthropic이 아닙니다.');
+  }
+  if (!anthropicClient || anthropicApiKey !== apiKey) {
+    anthropicClient = new Anthropic({ apiKey });
+    anthropicApiKey = apiKey;
+  }
   return anthropicClient;
 }
 
-export function getOpenAI(): OpenAI {
-  const apiKey = getEnv().openaiApiKey;
-  if (!apiKey) throw new Error('OPENAI_API_KEY가 설정되지 않았습니다.');
-  if (!openaiClient) openaiClient = new OpenAI({ apiKey });
+export function getOpenAI(config: LlmConfig): OpenAI {
+  const apiKey = requireLlmApiKey(config);
+  if (config.provider !== 'openai') {
+    throw new Error('현재 LLM provider가 OpenAI가 아닙니다.');
+  }
+  if (!openaiClient || openaiApiKey !== apiKey) {
+    openaiClient = new OpenAI({ apiKey });
+    openaiApiKey = apiKey;
+  }
   return openaiClient;
 }
 
 export function getModel(): string {
   const env = getEnv();
   return resolveModel(env.llmProvider, env.llmModel);
-}
-
-export function resolveModel(provider: Env['llmProvider'], model: string | null): string {
-  if (model) return model;
-  return provider === 'openai' ? DEFAULT_OPENAI_MODEL : DEFAULT_ANTHROPIC_MODEL;
 }
 
 export function getReasoningEffort(): 'low' | 'medium' | 'high' {
@@ -94,18 +106,24 @@ export function toOpenAIInput(args: unknown): Array<Record<string, unknown>> {
 
 function reasoning(args: ProviderRequest) {
   const effort = args.output_config?.effort ?? 'high';
-  return effort ? { effort } : undefined;
+  return { effort };
 }
 
-export function getStructuredParser<T>(schema: ZodType<T>, schemaName: string): ParseFn {
-  if (getEnv().llmProvider === 'anthropic') {
+export function getStructuredParser<T>(
+  schema: ZodType<T>,
+  schemaName: string,
+  config: LlmConfig
+): ParseFn {
+  if (config.provider === 'anthropic') {
     return (args) =>
-      getAnthropic().messages.parse(args as never) as Promise<{ parsed_output: unknown }>;
+      getAnthropic(config).messages.parse(args as never) as Promise<{
+        parsed_output: unknown;
+      }>;
   }
 
   return async (args) => {
     const request = asProviderRequest(args);
-    const response = await getOpenAI().responses.parse({
+    const response = await getOpenAI(config).responses.parse({
       model: request.model,
       max_output_tokens: request.max_tokens,
       reasoning: reasoning(request),
@@ -116,17 +134,17 @@ export function getStructuredParser<T>(schema: ZodType<T>, schemaName: string): 
   };
 }
 
-export function getTextCreator(): CreateFn {
-  if (getEnv().llmProvider === 'anthropic') {
+export function getTextCreator(config: LlmConfig): CreateFn {
+  if (config.provider === 'anthropic') {
     return (args) =>
-      getAnthropic().messages.create(args as never) as Promise<{
+      getAnthropic(config).messages.create(args as never) as Promise<{
         content: Array<{ type: string; text?: string }>;
       }>;
   }
 
   return async (args) => {
     const request = asProviderRequest(args);
-    const response = await getOpenAI().responses.create({
+    const response = await getOpenAI(config).responses.create({
       model: request.model,
       max_output_tokens: request.max_tokens,
       reasoning: reasoning(request),

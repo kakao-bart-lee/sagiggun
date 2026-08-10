@@ -1,8 +1,8 @@
-import { getModel, getReasoningEffort, getTextCreator } from './client';
+import { getTextCreator } from './client';
 import type { CreateFn } from './client';
 import { TEMPLATE, hasTemplateShape } from './template';
 import type { Extracted } from './extract';
-import { getEnv } from '@/lib/env';
+import { getLlmConfig } from './config';
 import { mockCompose } from './mock';
 
 export type PhotoInput = { contentType: string; base64: string };
@@ -53,7 +53,8 @@ export async function composeBody(
   photos: PhotoInput[],
   deps: { create?: CreateFn } = {}
 ): Promise<string> {
-  if (!deps.create && getEnv().llmMode === 'mock') {
+  const config = await getLlmConfig();
+  if (!deps.create && config.mode === 'mock') {
     const text = mockCompose(fields);
     if (!hasTemplateShape(text)) {
       throw new Error('작문 결과가 형식에 맞지 않습니다. 다시 시도해 주세요.');
@@ -63,7 +64,7 @@ export async function composeBody(
 
   const create: CreateFn =
     deps.create ??
-    getTextCreator();
+    getTextCreator(config);
 
   const imageBlocks = photos.map((photo) => ({
     type: 'image' as const,
@@ -75,9 +76,9 @@ export async function composeBody(
   }));
 
   const response = await create({
-    model: getModel(),
+    model: config.model,
     max_tokens: MAX_TOKENS,
-    output_config: { effort: getReasoningEffort() },
+    output_config: { effort: config.reasoning },
     system: SYSTEM,
     messages: [
       {

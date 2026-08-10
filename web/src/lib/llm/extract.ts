@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { getModel, getReasoningEffort, getStructuredParser } from './client';
+import { getStructuredParser } from './client';
 import type { ParseFn } from './client';
-import { getEnv } from '@/lib/env';
+import { getLlmConfig } from './config';
 import { mockExtract } from './mock';
 
 export const ExtractedSchema = z.object({
@@ -42,20 +42,21 @@ export async function extractFields(
   rawText: string,
   deps: { parse?: ParseFn } = {}
 ): Promise<Extracted> {
-  if (!deps.parse && getEnv().llmMode === 'mock') {
+  const config = await getLlmConfig();
+  if (!deps.parse && config.mode === 'mock') {
     return mockExtract(rawText);
   }
 
   const parse: ParseFn =
     deps.parse ??
-    getStructuredParser(ExtractedSchema, 'extracted_profile');
+    getStructuredParser(ExtractedSchema, 'extracted_profile', config);
 
   const response = await parse({
-    model: getModel(),
+    model: config.model,
     // reasoning 토큰과 응답을 함께 고려해 넉넉히 잡는다.
     max_tokens: MAX_TOKENS,
     output_config: {
-      effort: getReasoningEffort(),
+      effort: config.reasoning,
       format: zodOutputFormat(ExtractedSchema),
     },
     system: EXTRACT_SYSTEM,

@@ -45,6 +45,8 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_REASONING: ${LLM_REASONING:-high}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      LLM_CONFIG_SECRET: ${LLM_CONFIG_SECRET:-}
       EXTENSION_CORS_ORIGINS: ${EXTENSION_CORS_ORIGINS:-}
     volumes:
       - photo_data:/data/photos

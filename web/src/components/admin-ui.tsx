@@ -15,6 +15,9 @@ export function AdminTopBar({ right }: { right?: React.ReactNode }) {
         <Link href="/admin/deliveries" className="hover:text-fog">
           전달 큐
         </Link>
+        <Link href="/admin/settings" className="hover:text-fog">
+          설정
+        </Link>
         {right}
         <LogoutButton />
       </nav>
