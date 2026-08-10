@@ -16,6 +16,12 @@ test.describe('UI smoke', () => {
     await page.getByRole('link', { name: '전달 큐' }).click();
     await expect(page).toHaveURL(/\/admin\/deliveries/);
     await expect(page.getByRole('heading', { name: '전달 큐' })).toBeVisible();
+
+    await page.getByRole('link', { name: '설정' }).click();
+    await expect(page).toHaveURL(/\/admin\/settings/);
+    await expect(page.getByRole('heading', { name: '설정' })).toBeVisible();
+    await expect(page.locator('input[required]').first()).toHaveValue('gpt-5.6-luna');
+    await expect(page.getByText('Secret Manager 설정이 없어 저장할 수 없습니다.')).toBeVisible();
   });
 
   test('프로필에서 매칭 추천 UI', async ({ page, request }) => {

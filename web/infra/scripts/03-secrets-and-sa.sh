@@ -38,6 +38,10 @@ upsert_secret() {
 : "${ANTHROPIC_API_KEY:?}"
 : "${OPENAI_API_KEY:=disabled-until-configured}"
 : "${OPS_API_TOKEN:?}"
+LLM_CONFIG_JSON="${LLM_CONFIG_JSON:-}"
+if [[ -z "$LLM_CONFIG_JSON" ]]; then
+  LLM_CONFIG_JSON='{"version":1,"mode":"mock","provider":"openai","model":"gpt-5.6-luna","reasoning":"high","openaiApiKey":"","anthropicApiKey":""}'
+fi
 
 upsert_secret "${SERVICE}-database-url" "$DATABASE_URL"
 upsert_secret "${SERVICE}-admin-password" "$ADMIN_PASSWORD"
@@ -45,6 +49,20 @@ upsert_secret "${SERVICE}-session-secret" "$SESSION_SECRET"
 upsert_secret "${SERVICE}-anthropic-api-key" "$ANTHROPIC_API_KEY"
 upsert_secret "${SERVICE}-openai-api-key" "$OPENAI_API_KEY"
 upsert_secret "${SERVICE}-ops-api-token" "$OPS_API_TOKEN"
+
+# UI가 저장할 런타임 LLM 설정. 이미 있으면 UI에서 저장한 버전을 보존한다.
+if ! gcloud secrets describe "${SERVICE}-llm-config" >/dev/null 2>&1; then
+  echo -n "$LLM_CONFIG_JSON" | gcloud secrets create "${SERVICE}-llm-config" --data-file=-
+fi
+gcloud secrets add-iam-policy-binding "${SERVICE}-llm-config" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor" >/dev/null
+gcloud secrets add-iam-policy-binding "${SERVICE}-llm-config" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/secretmanager.secretVersionAdder" >/dev/null
+gcloud secrets add-iam-policy-binding "${SERVICE}-llm-config" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/secretmanager.secretVersionManager" >/dev/null
 
 # Cloud Build SA needs run admin / ar writer — usually the default Cloud Build SA
 echo "Secrets + SA ready: $SA_EMAIL"

@@ -30,6 +30,7 @@
   "packageManager": "pnpm@10.28.2",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
+    "@google-cloud/secret-manager": "^6.3.0",
     "@google-cloud/storage": "^7.19.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",

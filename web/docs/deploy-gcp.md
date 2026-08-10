@@ -13,7 +13,7 @@
 | Cloud SQL | 기존 `moonlit-prod` 인스턴스 안의 `sagiggun` DB (`sagiggun_app` 사용자) |
 | GCS | `sagiggun-photos` (`PHOTO_BUCKET`) |
 | Runtime SA | `sa-sagiggun-run@PROJECT.iam.gserviceaccount.com` |
-| Secrets | `sagiggun-database-url`, `…-admin-password`, `…-session-secret`, `…-anthropic-api-key`, `…-openai-api-key`, `…-ops-api-token` |
+| Secrets | `sagiggun-database-url`, `…-admin-password`, `…-session-secret`, `…-anthropic-api-key`, `…-openai-api-key`, `…-ops-api-token`, `…-llm-config` |
 
 사진은 Cloud Run 로컬 디스크가 ephemeral이라 **GCS(`PHOTO_BUCKET`)를 써야 합니다.**  
 로컬/docker-compose는 `PHOTO_DIR` 파일 저장을 유지합니다.
@@ -113,3 +113,9 @@ pnpm test:e2e
 ```
 
 `LLM_MODE=mock`으로 provider API를 호출하지 않고 시드·결정적 픽스처로 검증합니다.
+
+관리자 `/admin/settings`에서 provider·모델·reasoning과 API 키를 저장할 수 있습니다.
+키와 런타임 설정은 Secret Manager의 `${SERVICE_NAME}-llm-config`에 새 버전으로 저장되며,
+화면에는 키를 다시 표시하지 않습니다. 저장 후 최대 30초 이내의 다음 LLM 요청부터
+반영됩니다. 런타임 서비스 계정에는 이 Secret에 `secretAccessor`, `secretVersionAdder`,
+`secretVersionManager` 역할이 부여됩니다.

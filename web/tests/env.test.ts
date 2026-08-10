@@ -74,13 +74,15 @@ describe('getEnv', () => {
     expect(getEnv({ ...full, LLM_REASONING: 'medium' }).llmReasoning).toBe('medium');
   });
 
-  it('live provider에 해당하는 키가 없으면 실패한다', () => {
-    expect(() =>
-      getEnv({ ...full, ANTHROPIC_API_KEY: undefined, LLM_PROVIDER: 'anthropic' })
-    ).toThrow(/ANTHROPIC_API_KEY/);
-    expect(() =>
-      getEnv({ ...full, OPENAI_API_KEY: undefined, LLM_PROVIDER: 'openai' })
-    ).toThrow(/OPENAI_API_KEY/);
+  it('provider 키는 runtime 설정에서 관리할 수 있다', () => {
+    const env = getEnv({
+      ...full,
+      ANTHROPIC_API_KEY: undefined,
+      OPENAI_API_KEY: undefined,
+      LLM_PROVIDER: 'openai',
+    });
+    expect(env.openaiApiKey).toBeNull();
+    expect(env.anthropicApiKey).toBeNull();
   });
 
   it('mock은 provider 키 없이도 설정할 수 있다', () => {
