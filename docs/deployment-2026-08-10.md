@@ -4,7 +4,7 @@
 
 - GCP project: `haruto-snow`
 - Cloud Run: `sagiggun`, region `asia-northeast3`
-- 현재 revision: `sagiggun-00001-czp`, traffic 100%
+- 현재 revision: `sagiggun-00002-28m`, traffic 100%
 - 직접 origin: `https://sagiggun-w4ywua36ca-du.a.run.app`
 - Cloud SQL: 기존 `moonlit-prod` 인스턴스 재사용
 - 애플리케이션 DB/user: `sagiggun` / `sagiggun_app`
@@ -18,6 +18,15 @@ Cloud SQL 새 인스턴스는 만들지 않는다. 배포 스크립트도 기존
 삭제했다.
 
 ## 배포 상태
+
+PR #5가 `356b8fcc687711e60e124da594e70f318f5d3867`로 main에 merge된 뒤,
+Cloud Build `4bc01160-89d0-42de-8f37-8f7461b348cf`로 `sagiggun-00002-28m`을
+배포했다. 현재 runtime 설정은 `LLM_MODE=mock`, `LLM_PROVIDER=openai`,
+`LLM_MODEL=gpt-5.6-luna`, `LLM_REASONING=high`다. 유효한 OpenAI 키가 준비되기 전까지
+실제 LLM 호출은 활성화하지 않는다.
+
+배포 후 검증은 direct/public login 200, 무인증 API 401, OPS 인증 API 200, CORS
+preflight 204, 공개 반복 확인 5/5였다.
 
 첫 배포는 유효한 Anthropic API 키가 로컬에 없어 `LLM_MODE=mock` substitution으로
 진행했다. 현재 Secret Manager에는 앱 시크릿 6개가 있으며, 관리자 비밀번호·세션
