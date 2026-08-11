@@ -175,6 +175,7 @@ export async function acceptSuggestion(
         const d1 = await tx.deliveryItem.create({
           data: {
             suggestionId: args.suggestionId,
+            kind: 'MATCH_PROPOSAL',
             toProfileId: args.subjectId,
             toHandle: args.subjectHandle,
             body: args.draftForSubject,
@@ -183,6 +184,7 @@ export async function acceptSuggestion(
         const d2 = await tx.deliveryItem.create({
           data: {
             suggestionId: args.suggestionId,
+            kind: 'MATCH_PROPOSAL',
             toProfileId: args.candidateId,
             toHandle: args.candidateHandle,
             body: args.draftForCandidate,

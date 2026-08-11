@@ -31,6 +31,13 @@ describe('evaluateGate — 미들웨어 게이트 판정', () => {
     expect(await evaluateGate('/api/auth/login', SECRET, '')).toEqual({ kind: 'allow' });
   });
 
+  it('/api/public/* 는 익명 신청·관심 접수용으로 인증 없이 통과한다', async () => {
+    expect(await evaluateGate('/api/public/apply', SECRET, '')).toEqual({ kind: 'allow' });
+    expect(await evaluateGate('/api/public/interest', SECRET, '')).toEqual({ kind: 'allow' });
+    // prefix만 공개다 — /api/publicX 같은 유사 경로는 여전히 막는다.
+    expect(await evaluateGate('/api/publicX/apply', SECRET, '')).toEqual({ kind: 'unauthorized' });
+  });
+
   it('유효한 세션 쿠키가 있으면 통과한다', async () => {
     const token = await createSessionToken(SECRET, Date.now() + 60_000);
     expect(await evaluateGate('/admin/profiles', SECRET, token)).toEqual({ kind: 'allow' });

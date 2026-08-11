@@ -8,7 +8,7 @@ web
 
 ## Users
 
-Primary user is a single operator who runs a Threads-based intro / matching service. They work alone: logging in to the admin web app, pasting DM self-intros and photos, running LLM extract/compose, reviewing copy, and approving posts. Applicant-facing surfaces and multi-operator accounts are out of scope.
+Primary user is a single operator who runs a Threads-based intro / matching service. They work alone: logging in to the admin web app, pasting DM self-intros and photos, running LLM extract/compose, reviewing copy, and approving posts. A minimal applicant-facing public surface exists (anonymous listing, interest form, application form); multi-operator accounts remain out of scope.
 
 ## Product Purpose
 
@@ -34,14 +34,16 @@ Confirmed today:
 - Profile intake with duplicate-handle warning (does not block save).
 - Photo upload to filesystem volume; served only through authenticated routes.
 - LLM extract (structured fields, no guessing) and compose (fields + photos → draft body starting with ✨, no post number in body).
-- Status machine: COLLECTED → DRAFTED → APPROVED (→ PUBLISHED planned); edit after approve returns to DRAFTED; ARCHIVED exists in the model with limited/no UI.
+- Status machine: COLLECTED → DRAFTED → APPROVED → PUBLISHED (manual publish + seq issue via publish-mark); edit after approve returns to DRAFTED; ARCHIVED exists in the model with limited/no UI.
 - Delete removes DB row and photo files together.
+- Inbound interest (Inquiry) pipeline: RECEIVED → SPEC_REQUESTED → SPEC_RECEIVED → FORWARDED → ACCEPTED/DECLINED/CLOSED, driving typed delivery-queue drafts (spec request / spec forward / connect); extension can file interest from a DM and auto-attach collected replies.
+- Public, unauthenticated surfaces: anonymous published-profile listing (`/`), per-number detail with interest form (`/c/[seq]`), structured application form (`/apply`, min 2 photos, adult + privacy consent, rate-limited). Handles and photos are never exposed publicly.
 
 Explicitly undecided / open:
 
 - Product display name: may remain informal or become **Some Love** (or another name); not locked.
 - Brand voice and personality: open.
-- Subsystem 3 (Threads Publishing API) and 4 (matching + DM delivery via extension): designed as next product work, not yet built.
+- Subsystem 3 (Threads Publishing API): designed as next product work, not yet built. Subsystem 4 (matching + DM delivery via extension) and the inbound-interest pipeline are shipped; delivery send remains manual by design.
 - No additional operator-stated constraints beyond the shipped approval/privacy shape above.
 
 ## Brand Commitments

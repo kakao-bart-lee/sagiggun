@@ -58,11 +58,36 @@
     });
   }
 
+  // 관심 접수 — "N번 맘에 들어요" DM을 현재 대화에서 바로 기록한다.
+  async function createInquiry(storage, { targetSeq, fromHandle, note }) {
+    return request(storage, '/api/inquiries', {
+      method: 'POST',
+      body: JSON.stringify({ targetSeq, fromHandle, note }),
+    });
+  }
+
+  // 이 핸들의 열린(종결 전) 관심 문의 목록.
+  async function listOpenInquiries(storage, handle) {
+    const params = new URLSearchParams({ open: '1', handle: handle.replace(/^@/, '') });
+    return request(storage, `/api/inquiries?${params.toString()}`);
+  }
+
+  // 수집한 프로필을 관심 문의의 "관심자 스펙"으로 연결한다.
+  async function attachInquiryProfile(storage, inquiryId, fromProfileId) {
+    return request(storage, `/api/inquiries/${inquiryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action: 'ATTACH_PROFILE', fromProfileId }),
+    });
+  }
+
   NS.api = {
     getConfig,
     createProfile,
     uploadPhotos,
     listDeliveries,
     patchDelivery,
+    createInquiry,
+    listOpenInquiries,
+    attachInquiryProfile,
   };
 })();

@@ -12,6 +12,9 @@ import {
 // 적혀 있어 하나만 바뀌는 것)을 애초에 없앤다.
 const LOGIN_PATH = '/admin/login';
 const PUBLIC_PATHS = [LOGIN_PATH, '/api/auth/login'];
+// /api/public/ 아래는 익명 신청·관심 접수 전용 네임스페이스다. 여기에 두는 라우트는
+// "의도적으로 공개"라는 선언이며, 각 라우트가 자체 rate limit·검증을 책임진다.
+const PUBLIC_API_PREFIX = '/api/public/';
 const DEFAULT_EXTENSION_CORS_ORIGINS = [
   'https://www.threads.com',
   'https://threads.com',
@@ -76,6 +79,7 @@ export async function evaluateGate(
 
   const { pathname } = input;
   if (PUBLIC_PATHS.includes(pathname)) return { kind: 'allow' };
+  if (pathname.startsWith(PUBLIC_API_PREFIX)) return { kind: 'allow' };
 
   const sessionOk =
     !!input.sessionSecret &&

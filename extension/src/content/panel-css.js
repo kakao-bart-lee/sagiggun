@@ -150,6 +150,29 @@
   font: inherit;
 }
 .ops .collect:hover { background: #345068; }
+.inq { display: flex; gap: 6px; margin-top: 6px; }
+.inq .inq-seq {
+  flex: 1; min-width: 0;
+  background: #101010;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 8px;
+  color: #f5f5f5;
+  font: inherit;
+  box-sizing: border-box;
+}
+.inq .inq-seq:focus { outline: 1px solid #4ba3f2; }
+.inq .inq-add {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #303030;
+  background: #4a3a2a;
+  color: #f5f5f5;
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+.inq .inq-add:hover { background: #685034; }
 .ops-status { margin: 8px 0; min-height: 16px; font-size: 12px; color: #999; }
 .ops-status.ok { color: #4ba3f2; }
 .ops-status.warn { color: #e8b64c; }

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   AccessionCard,
@@ -7,7 +8,7 @@ import {
   StampLink,
   StatusSeal,
 } from '@/components/admin-ui';
-import { STATUS_LABEL, statusTone } from '@/lib/ui';
+import { INQUIRY_STATUS_LABEL, STATUS_LABEL, inquiryStatusTone, statusTone } from '@/lib/ui';
 import { prisma } from '@/lib/prisma';
 import { ProfileEditor } from './editor';
 import { ProfilePhotos } from './photos-panel';
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [profile, strip] = await Promise.all([
+  const [profile, strip, inquiries] = await Promise.all([
     prisma.profile.findUnique({
       where: { id },
       include: { photos: { orderBy: { order: 'asc' } } },
@@ -33,6 +34,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
         photos: { select: { id: true }, orderBy: { order: 'asc' }, take: 1 },
       },
       orderBy: { createdAt: 'desc' },
+    }),
+    prisma.inquiry.findMany({
+      where: { OR: [{ targetId: id }, { fromProfileId: id }] },
+      include: {
+        target: { select: { id: true, seq: true, sourceHandle: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 20,
     }),
   ]);
   if (!profile) notFound();
@@ -106,6 +115,42 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
           }}
         />
       </div>
+
+      {inquiries.length > 0 && (
+        <section className="mt-5 rounded-[12px] border-2 border-edge bg-card p-4 text-on-card">
+          <h3 className="mb-3 text-sm font-bold text-muted-on-card">관심 문의</h3>
+          <ul className="flex flex-col gap-2">
+            {inquiries.map((inq) => (
+              <li key={inq.id}>
+                <Link
+                  href={`/admin/inquiries/${inq.id}`}
+                  className="flex flex-wrap items-center gap-2 rounded-[8px] border-2 border-edge bg-field px-3 py-2 text-sm hover:border-telop-blue"
+                >
+                  {inq.targetId === profile.id ? (
+                    <>
+                      <span className="font-bold text-telop-blue">@{inq.fromHandle}</span>
+                      <span className="text-xs text-muted-on-card">님이 이 프로필에 관심</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs text-muted-on-card">이 분이 보낸 관심 →</span>
+                      <span className="font-bold text-telop-blue">
+                        {inq.target.seq != null ? `#${inq.target.seq} ` : ''}@
+                        {inq.target.sourceHandle}
+                      </span>
+                    </>
+                  )}
+                  <StatusSeal
+                    label={INQUIRY_STATUS_LABEL[inq.status] ?? inq.status}
+                    tone={inquiryStatusTone(inq.status)}
+                    className="ml-auto h-8 min-w-8 text-[10px]"
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="mt-5">
         <MatchPanel profileId={profile.id} />

@@ -24,10 +24,23 @@
   <section class="ops">
     <h2>운영 (수집·전달)</h2>
     <button class="collect" type="button">이 대화 수집</button>
+    <div class="inq">
+      <input class="inq-seq" type="text" inputmode="numeric" placeholder="게시 번호" />
+      <button class="inq-add" type="button">관심 접수</button>
+    </div>
     <p class="ops-status" role="status"></p>
     <ul class="dlist"></ul>
   </section>
 </section>`;
+
+  // 전달 큐 항목의 종류 라벨 — 어떤 멘트인지(스펙 문의/전달/성사 안내) 한눈에 보이게 한다.
+  const DELIVERY_KIND_LABEL = {
+    MATCH_PROPOSAL: '매칭 제안',
+    SPEC_REQUEST: '스펙 문의',
+    SPEC_FORWARD: '스펙 전달',
+    CONNECT: '성사 안내',
+    OTHER: '기타',
+  };
 
   function labelFor(snippet) {
     const title = (snippet.title || '').trim();
@@ -67,6 +80,8 @@
     const saveBtn = $('.save');
     const sideBtn = $('.side');
     const collectBtn = $('.collect');
+    const inqSeqInput = $('.inq-seq');
+    const inqAddBtn = $('.inq-add');
     const opsStatusEl = $('.ops-status');
     const dlistEl = $('.dlist');
     const opsApi = api || NS.api;
@@ -166,7 +181,8 @@
 
           const meta = doc.createElement('div');
           meta.className = 'dmeta';
-          meta.textContent = '@' + (item.toHandle || '');
+          const kindLabel = DELIVERY_KIND_LABEL[item.kind];
+          meta.textContent = '@' + (item.toHandle || '') + (kindLabel ? ` · ${kindLabel}` : '');
 
           const body = doc.createElement('pre');
           body.className = 'dbody';
@@ -281,11 +297,46 @@
         setOpsStatus(
           `수집됨 @${result.handle}` +
             (result.photoFailed ? ` · 사진 ${result.photoFailed}장 실패` : '') +
+            (result.inquiriesAttached ? ` · 관심 문의 ${result.inquiriesAttached}건에 연결됨` : '') +
             ` → ${result.adminUrl}`,
           'ok'
         );
       } catch (err) {
         setOpsStatus(err.message || '수집 실패', 'error');
+      }
+    });
+
+    // 관심 접수 — "N번 맘에 들어요" DM을 보고 번호만 넣으면 현재 대화 상대로 기록된다.
+    inqAddBtn.addEventListener('click', async () => {
+      if (!opsApi?.createInquiry) {
+        setOpsStatus('API 모듈이 없습니다.', 'error');
+        return;
+      }
+      const handle = activeHandle();
+      if (!handle) {
+        setOpsStatus('현재 대화 상대를 찾지 못했습니다.', 'warn');
+        return;
+      }
+      const seq = Number(inqSeqInput.value.trim());
+      if (!Number.isInteger(seq) || seq <= 0) {
+        setOpsStatus('게시 번호를 입력하세요.', 'warn');
+        return;
+      }
+      setOpsStatus('관심 접수 중…');
+      try {
+        const data = await opsApi.createInquiry(storage, {
+          targetSeq: seq,
+          fromHandle: handle,
+        });
+        inqSeqInput.value = '';
+        setOpsStatus(
+          data.reused
+            ? `이미 진행 중인 문의입니다: #${seq} ← @${handle}`
+            : `관심 접수됨: #${seq} ← @${handle}`,
+          'ok'
+        );
+      } catch (err) {
+        setOpsStatus(err.message || '관심 접수 실패', 'error');
       }
     });
 

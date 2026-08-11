@@ -53,3 +53,36 @@ export function recordLoginFailure(key: string, now: number): void {
 export function recordLoginSuccess(key: string): void {
   buckets.delete(key);
 }
+
+// ---------------------------------------------------------------------------
+// 공개 제출(신청·관심) 슬라이딩 윈도우 — 로그인 잠금과 달리 실패/성공 구분 없이
+// 제출 자체를 IP당 분당 N회로 누른다. 익명 폼이라 스팸·도배가 유일한 위협 모델이고,
+// 정상 사용자는 분당 3회를 넘길 일이 없다.
+// ---------------------------------------------------------------------------
+const SUBMIT_WINDOW_MS = 60_000;
+const SUBMIT_MAX = 3;
+const SUBMIT_BUCKET_CAP = 10_000; // 무한 성장 방지 — 넘으면 만료 버킷부터 청소
+
+export const PUBLIC_SUBMIT_LIMIT = { WINDOW_MS: SUBMIT_WINDOW_MS, MAX: SUBMIT_MAX };
+
+const submitBuckets = new Map<string, number[]>();
+
+export function checkPublicSubmitLimit(
+  key: string,
+  now: number
+): { limited: boolean; retryAfterMs: number } {
+  if (submitBuckets.size > SUBMIT_BUCKET_CAP) {
+    for (const [k, times] of submitBuckets) {
+      if (times.every((t) => now - t >= SUBMIT_WINDOW_MS)) submitBuckets.delete(k);
+    }
+  }
+
+  const times = (submitBuckets.get(key) ?? []).filter((t) => now - t < SUBMIT_WINDOW_MS);
+  if (times.length >= SUBMIT_MAX) {
+    submitBuckets.set(key, times);
+    return { limited: true, retryAfterMs: SUBMIT_WINDOW_MS - (now - times[0]) };
+  }
+  times.push(now);
+  submitBuckets.set(key, times);
+  return { limited: false, retryAfterMs: 0 };
+}
