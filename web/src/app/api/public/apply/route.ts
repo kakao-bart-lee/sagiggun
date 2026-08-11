@@ -103,9 +103,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `사진을 ${MIN_PHOTOS}장 이상 올려주세요.` }, { status: 400 });
   }
   // 저장 전에 전부 검증한다 — 일부만 저장된 신청은 운영자도 신청자도 다루기 어렵다.
-  for (const photo of photos) {
+  // existingCount에 지금까지 검증한 장수를 누적해서 넘겨야 장수 상한이 실제로 걸린다
+  // (새 프로필이라 기존 장수는 0이지만, 이번 요청 안에서의 누적은 반영해야 한다).
+  for (let i = 0; i < photos.length; i += 1) {
     try {
-      assertUploadable(photo.type, photo.size, 0);
+      assertUploadable(photos[i].type, photos[i].size, i);
     } catch (error) {
       return NextResponse.json({ error: (error as Error).message }, { status: 400 });
     }
