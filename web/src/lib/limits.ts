@@ -24,6 +24,18 @@ export function isAllowedImageType(type: string): boolean {
   return (ALLOWED_TYPES as readonly string[]).includes(type);
 }
 
+/** 사진 리사이즈 변형(`/api/photos/[id]?w=`)에 허용하는 폭 범위. */
+export const MIN_PHOTO_WIDTH = 64;
+export const MAX_PHOTO_WIDTH = 800;
+
+/** ?w= 요청값을 안전한 범위로 자른다. 원본보다 키우거나 무한대로 늘리지 못하게 한다. */
+export function clampPhotoWidth(raw: string | null): number | null {
+  if (!raw) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(MAX_PHOTO_WIDTH, Math.max(MIN_PHOTO_WIDTH, Math.round(n)));
+}
+
 /** 사람이 읽는 크기 문자열 — 오류 메시지에 쓴다. */
 export function formatMb(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;

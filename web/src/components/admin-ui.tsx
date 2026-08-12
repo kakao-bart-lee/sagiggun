@@ -150,8 +150,15 @@ export function AccessionCard({
       </div>
       <div className="aspect-[4/3] overflow-hidden rounded-[6px] bg-thumb">
         {thumbSrc ? (
+          // 148px 카드에 원본(최대 10MB)을 그대로 내려보내던 문제 — 표시 폭의 2배로 리사이즈된
+          // 변형을 요청한다. 세션 스트립엔 카드가 여러 장 들어가므로 lazy로 미룬다.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumbSrc} alt="" className="h-full w-full object-cover" />
+          <img
+            src={`${thumbSrc}?w=300`}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
         ) : null}
       </div>
       <div className="min-h-[2.6em]">

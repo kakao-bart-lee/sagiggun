@@ -94,10 +94,13 @@ export function ProfilePhotos({
         <ul className="grid list-none grid-cols-2 gap-3 p-0 sm:grid-cols-3">
           {photos.map((photo, index) => (
             <li key={photo.id} className="flex flex-col gap-2">
+              {/* 갤러리 셀에 원본을 그대로 내려보내던 문제 — 표시 폭보다 넉넉히 큰 리사이즈
+                  변형을 요청한다. 사진이 최대 10장이라 lazy로 미룬다. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/api/photos/${photo.id}`}
-                alt=""
+                src={`/api/photos/${photo.id}?w=500`}
+                alt={`받은 사진 ${index + 1}`}
+                loading="lazy"
                 className="aspect-square w-full rounded-[10px] border-2 border-edge object-cover"
               />
               <StampButton
