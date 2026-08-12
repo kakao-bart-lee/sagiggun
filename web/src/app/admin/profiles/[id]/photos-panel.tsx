@@ -146,11 +146,22 @@ export function ProfilePhotos({
         )}
       >
         <span className="text-sm font-bold">
-          {atLimit
-            ? `최대 ${MAX_PHOTOS_PER_PROFILE}장을 모두 채웠어요`
-            : busy === 'upload'
-              ? '올리는 중…'
-              : '사진을 여기로 끌어다 놓거나 클릭해서 선택하세요'}
+          {atLimit ? (
+            `최대 ${MAX_PHOTOS_PER_PROFILE}장을 모두 채웠어요`
+          ) : busy === 'upload' ? (
+            '올리는 중…'
+          ) : (
+            <>
+              {/* 터치 기기엔 파일 드래그&드롭 자체가 없다. pointer:coarse에서는
+                  "끌어다 놓기" 언급을 빼고 탭 안내만 보여준다. */}
+              <span className="hidden [@media(pointer:coarse)]:inline">
+                사진을 눌러서 선택하세요
+              </span>
+              <span className="[@media(pointer:coarse)]:hidden">
+                사진을 여기로 끌어다 놓거나 클릭해서 선택하세요
+              </span>
+            </>
+          )}
         </span>
         <span className="text-xs">
           JPG · PNG · WebP · 장당 {formatMb(MAX_BYTES)} · 한 번에 {formatMb(MAX_BATCH_BYTES)}까지
