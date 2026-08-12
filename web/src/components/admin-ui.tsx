@@ -167,10 +167,11 @@ export function AccessionCard({
         {thumbSrc ? (
           // 148px 카드에 원본(최대 10MB)을 그대로 내려보내던 문제 — 표시 폭의 2배로 리사이즈된
           // 변형을 요청한다. 세션 스트립엔 카드가 여러 장 들어가므로 lazy로 미룬다.
+          // alt=""였는데, 이 사진은 운영자가 검수하는 실제 대상 콘텐츠라 장식이 아니다.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`${thumbSrc}?w=300`}
-            alt=""
+            alt={`@${handle} 사진`}
             loading="lazy"
             className="h-full w-full object-cover"
           />

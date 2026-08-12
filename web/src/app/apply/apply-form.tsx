@@ -366,7 +366,11 @@ function PhotoThumb({
     <div className="relative">
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="h-20 w-20 rounded-[8px] border-2 border-edge object-cover" />
+        <img
+          src={url}
+          alt={`선택한 사진 ${index + 1}`}
+          className="h-20 w-20 rounded-[8px] border-2 border-edge object-cover"
+        />
       ) : (
         <div className="h-20 w-20 rounded-[8px] border-2 border-edge bg-thumb" />
       )}
