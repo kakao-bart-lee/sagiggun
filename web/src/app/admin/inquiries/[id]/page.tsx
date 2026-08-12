@@ -117,7 +117,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
             />
           </p>
           {inquiry.target.finalBody && (
-            <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-xs text-muted-on-card">
+            <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-xs leading-snug text-muted-on-card">
               {inquiry.target.finalBody}
             </pre>
           )}

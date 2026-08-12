@@ -75,7 +75,7 @@ export default async function DeliveriesPage() {
                     {STATUS_KO[item.status] ?? item.status}
                   </span>
                 </div>
-                <pre className="mb-3 max-h-40 overflow-auto whitespace-pre-wrap text-sm text-on-card">
+                <pre className="mb-3 max-h-40 overflow-auto whitespace-pre-wrap text-sm leading-snug text-on-card">
                   {item.body}
                 </pre>
                 <DeliveryActions id={item.id} status={item.status} />

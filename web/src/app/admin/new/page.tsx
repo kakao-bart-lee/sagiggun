@@ -105,7 +105,7 @@ export default function NewProfilePage() {
               rows={12}
               required
               placeholder="스레드 DM으로 받은 자기소개 원문을 그대로 붙여넣어 주세요."
-              className="rounded-[8px] border-2 border-edge bg-field p-3 font-mono text-sm text-on-card"
+              className="rounded-[8px] border-2 border-edge bg-field p-3 font-mono text-sm leading-snug text-on-card"
             />
           </label>
 

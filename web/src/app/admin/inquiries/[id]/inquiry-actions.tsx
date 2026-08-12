@@ -29,7 +29,7 @@ type InquirySummary = {
 };
 
 const areaClass =
-  'w-full rounded-[8px] border-2 border-edge bg-field p-2 text-xs leading-relaxed text-on-card';
+  'w-full rounded-[8px] border-2 border-edge bg-field p-2 text-xs leading-snug text-on-card';
 
 export function InquiryActions({
   inquiry,

@@ -36,15 +36,6 @@ function listToLines(values: string[]): string {
 }
 
 /**
- * 출생연도 입력값을 나이로 환산해 라벨에 덧붙인다. 추출된 연도가 실제 나이와 맞는지
- * 사람이 한눈에 검산할 수 있게 하기 위함이다.
- *
- * 만 나이가 아니라 연 나이(올해 - 출생연도)를 쓴다. EXTRACT_SYSTEM이 "27살 → 기준연도-27"로
- * 똑같이 계산하므로, 프롬프트 산술을 그대로 되짚어봐야 검산이 성립한다.
- * 여기를 만 나이로 "고치면" 검산 기능이 깨진다 — 생일 경과에 따른 최대 1년 오차는
- * 사람 검수로 잡는다.
- */
-/**
  * 이상형 나이 범위를 사람이 읽는 순서(어린 쪽 → 많은 쪽)로 요약한다.
  * 출생연도가 작을수록 나이가 많으므로 min/max와 순서가 뒤집힌다 — 그 혼란을 없애는 것이 목적이다.
  */
@@ -60,6 +51,15 @@ function partnerAgeRange(minYear: string, maxYear: string): string {
   return `${youngest}~${oldest}세 (${fromYear}~${toYear}년생)`;
 }
 
+/**
+ * 출생연도 입력값을 나이로 환산해 라벨에 덧붙인다. 추출된 연도가 실제 나이와 맞는지
+ * 사람이 한눈에 검산할 수 있게 하기 위함이다.
+ *
+ * 만 나이가 아니라 연 나이(올해 - 출생연도)를 쓴다. EXTRACT_SYSTEM이 "27살 → 기준연도-27"로
+ * 똑같이 계산하므로, 프롬프트 산술을 그대로 되짚어봐야 검산이 성립한다.
+ * 여기를 만 나이로 "고치면" 검산 기능이 깨진다 — 생일 경과에 따른 최대 1년 오차는
+ * 사람 검수로 잡는다.
+ */
 function ageLabel(value: string): string {
   const year = Number(value.trim());
   if (!value.trim() || !Number.isFinite(year)) return '';
@@ -362,7 +362,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             setDirty(true);
           }}
           rows={18}
-          className="rounded-[12px] border-2 border-edge bg-card p-4 text-sm text-on-card"
+          className="rounded-[12px] border-2 border-edge bg-card p-4 text-sm leading-snug text-on-card"
         />
       </div>
 

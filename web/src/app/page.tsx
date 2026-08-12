@@ -91,7 +91,7 @@ export default async function PublicHome() {
                       </span>
                     )}
                   </div>
-                  <pre className="flex-1 whitespace-pre-wrap font-sans text-sm leading-relaxed text-on-card">
+                  <pre className="flex-1 whitespace-pre-wrap font-sans text-sm leading-snug text-on-card">
                     {excerpt(p.finalBody ?? '')}
                   </pre>
                   <span className="text-xs font-bold text-telop-blue">자세히 보기 →</span>

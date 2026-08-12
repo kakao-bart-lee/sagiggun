@@ -27,7 +27,7 @@ export default async function CandidatePage({ params }: { params: Promise<{ seq:
 
       <article className="rounded-[12px] border-2 border-edge bg-card p-6 text-on-card">
         <h1 className="mb-4 text-2xl font-extrabold">{profile.seq}.</h1>
-        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+        <pre className="whitespace-pre-wrap font-sans text-sm leading-snug">
           {profile.finalBody}
         </pre>
       </article>
