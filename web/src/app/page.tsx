@@ -121,6 +121,11 @@ export default async function PublicHome() {
           신청·관심 접수 시 입력한 정보는 소개 목적에만 사용됩니다. 연결이 끝나거나 요청하시면
           삭제합니다.
         </p>
+        {/* /admin은 middleware가 지켜서 미로그인 시 /admin/login으로 보낸다 — 링크는 그냥
+            /admin으로 걸어도 된다. 눈에 띄지 않게 하단 각주 자리에만 둔다. */}
+        <Link href="/admin" className="mt-3 inline-block font-bold hover:text-fog">
+          운영자 로그인 →
+        </Link>
       </footer>
     </main>
   );
