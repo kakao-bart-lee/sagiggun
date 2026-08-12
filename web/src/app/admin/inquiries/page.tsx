@@ -66,7 +66,7 @@ export default async function InquiriesPage({
     <main className="mx-auto max-w-4xl px-6 py-8">
       <AdminTopBar />
 
-      <h2 className="mb-2 text-xl font-extrabold text-fog">관심 문의</h2>
+      <h2 className="mb-2 text-xl font-extrabold text-fog">받은 관심</h2>
       <p className="mb-6 text-sm text-fog-muted">
         게시글을 보고 온 「N번 맘에 들어요」를 접수하고, 스펙 문의 → 스펙 전달 → 성사까지
         진행합니다. 보내기는 언제나 확장/Threads에서 직접 누릅니다.
@@ -96,7 +96,7 @@ export default async function InquiriesPage({
 
       {inquiries.length === 0 ? (
         <div className="rounded-[12px] border-2 border-dashed border-edge px-6 py-10 text-sm text-fog-muted">
-          해당 필터에 관심 문의가 없습니다. DM으로 「N번 맘에 들어요」가 오면 위에서 접수하거나,
+          해당 필터에 받은 관심이 없습니다. DM으로 「N번 맘에 들어요」가 오면 위에서 접수하거나,
           확장의 「관심 접수」를 쓰세요.
         </div>
       ) : (

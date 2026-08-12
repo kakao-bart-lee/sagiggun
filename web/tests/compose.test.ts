@@ -94,11 +94,26 @@ describe('composeBody', () => {
     await composeBody(fields, [], { create });
     const args = create.mock.calls[0][0] as { system: string };
     const system = args.system;
-    expect(system).toMatch(/사진을 보고 쓰는 부분은 두 줄/);
+    // 사진에서 유래한 내용은 「사진 묘사」 자리로만 제한된다 — 나머지 줄은 추출 항목이 결정한다.
+    expect(system).toMatch(/사진을 보고 쓰는 부분은 「사진 묘사」 자리뿐/);
     expect(system).toMatch(/호의적/);
     expect(system).toMatch(/등급/);
+    expect(system).toMatch(/성적으로/);
     expect(system).toMatch(/실존 인물/);
     expect(system).toMatch(/사람이 검수/);
+  });
+
+  it('사진 묘사를 생생하게 쓰도록 지시하고 건조한 문장을 실패로 규정한다', async () => {
+    const create = vi.fn(async (_args: unknown) => ok());
+    await composeBody(fields, [], { create });
+    const { system } = create.mock.calls[0][0] as { system: string };
+    // 피드백의 핵심: 스타일만 적은 문장("단정한 앞머리")은 이미지가 떠오르지 않는다.
+    expect(system).toMatch(/단정한 앞머리/);
+    expect(system).toMatch(/실패/);
+    // 하우스 스타일의 주요 기법이 프롬프트에 남아 있어야 한다.
+    expect(system).toMatch(/대비 구조/);
+    expect(system).toMatch(/구어체/);
+    expect(system).toMatch(/사진 묘사 예시/);
   });
 
   it('max_tokens를 넉넉히 잡는다', async () => {

@@ -3,7 +3,7 @@
 import { StampButton, StatusSeal } from '@/components/admin-ui';
 import { STATUS_LABEL, statusTone } from '@/lib/ui';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 type Profile = {
   id: string;
@@ -35,6 +35,22 @@ function listToLines(values: string[]): string {
   return values.join('\n');
 }
 
+/**
+ * 출생연도 입력값을 나이로 환산해 라벨에 덧붙인다. 추출된 연도가 실제 나이와 맞는지
+ * 사람이 한눈에 검산할 수 있게 하기 위함이다.
+ *
+ * 만 나이가 아니라 연 나이(올해 - 출생연도)를 쓴다. EXTRACT_SYSTEM이 "27살 → 기준연도-27"로
+ * 똑같이 계산하므로, 프롬프트 산술을 그대로 되짚어봐야 검산이 성립한다.
+ * 여기를 만 나이로 "고치면" 검산 기능이 깨진다 — 생일 경과에 따른 최대 1년 오차는
+ * 사람 검수로 잡는다.
+ */
+function ageLabel(value: string): string {
+  const year = Number(value.trim());
+  if (!value.trim() || !Number.isFinite(year)) return '';
+  const age = new Date().getFullYear() - year;
+  return ` (${age}세)`;
+}
+
 const fieldClass =
   'rounded-[8px] border-2 border-edge bg-field p-2 text-sm text-on-card';
 const labelClass = 'text-xs font-bold text-muted-on-card';
@@ -45,7 +61,19 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
+  const [copied, setCopied] = useState(false);
   const deleting = useRef(false);
+  const finalBodyId = useId();
+
+  async function copyBody() {
+    try {
+      await navigator.clipboard.writeText(body);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setMessage('복사에 실패했습니다. 직접 선택해서 복사해 주세요.');
+    }
+  }
 
   const [gender, setGender] = useState(profile.gender ?? '');
   const [birthYear, setBirthYear] = useState(profile.birthYear?.toString() ?? '');
@@ -109,30 +137,34 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         />
         <StampButton
           tone="ghost"
-          onClick={() => call(`/api/profiles/${profile.id}/extract`, { method: 'POST' }, 'extract')}
+          onClick={async () => {
+            const result = await call(
+              `/api/profiles/${profile.id}/extract`,
+              { method: 'POST' },
+              'extract'
+            );
+            const updated = result?.profile;
+            if (updated) {
+              setGender(updated.gender ?? '');
+              setBirthYear(updated.birthYear?.toString() ?? '');
+              setRegion(updated.region ?? '');
+              setHeightCm(updated.heightCm?.toString() ?? '');
+              setJob(updated.job ?? '');
+              // 배열 필드는 ?? []로 받는다. 응답이 any라서 shape이 바뀌면
+              // listToLines()의 join이 TypeError로 터지고 버튼이 조용히 죽는다.
+              setHobbies(listToLines(updated.hobbies ?? []));
+              setAppealPoints(listToLines(updated.appealPoints ?? []));
+              setIdealType(listToLines(updated.idealType ?? []));
+              setPartnerMin(updated.partnerBirthYearMin?.toString() ?? '');
+              setPartnerMax(updated.partnerBirthYearMax?.toString() ?? '');
+              setPartnerRegions(listToLines(updated.partnerRegions ?? []));
+              setDealBreakers(listToLines(updated.dealBreakers ?? []));
+            }
+          }}
           disabled={!!busy || archived}
           className="min-h-10 px-3 py-2 text-sm"
         >
           {busy === 'extract' ? '추출 중…' : '추출 실행'}
-        </StampButton>
-        <StampButton
-          tone="blue"
-          className="min-h-10 px-3 py-2 text-sm"
-          disabled={!!busy || archived}
-          onClick={async () => {
-            if (dirty && !confirm('작성 중인 내용이 있습니다. 새 초안으로 덮어쓸까요?')) return;
-            const result = await call(
-              `/api/profiles/${profile.id}/compose`,
-              { method: 'POST' },
-              'compose'
-            );
-            if (result?.profile?.draftBody != null) {
-              setBody(result.profile.draftBody);
-              setDirty(true);
-            }
-          }}
-        >
-          {busy === 'compose' ? '작문 중…' : '문구 작성'}
         </StampButton>
       </div>
 
@@ -152,7 +184,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             </select>
           </label>
           <label className="flex flex-col gap-1">
-            <span className={labelClass}>출생연도</span>
+            <span className={labelClass}>출생연도{ageLabel(birthYear)}</span>
             <input
               value={birthYear}
               onChange={(e) => setBirthYear(e.target.value)}
@@ -214,7 +246,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className={labelClass}>이상형 출생연도 최소</span>
+            <span className={labelClass}>이상형 출생연도 최소{ageLabel(partnerMin)}</span>
             <input
               value={partnerMin}
               onChange={(e) => setPartnerMin(e.target.value)}
@@ -223,7 +255,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className={labelClass}>이상형 출생연도 최대</span>
+            <span className={labelClass}>이상형 출생연도 최대{ageLabel(partnerMax)}</span>
             <input
               value={partnerMax}
               onChange={(e) => setPartnerMax(e.target.value)}
@@ -241,29 +273,66 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             />
           </label>
         </div>
-        <StampButton
-          tone="ghost"
-          className="mt-3 min-h-10 px-3 py-2 text-sm"
-          disabled={!!busy}
-          onClick={() =>
-            call(
-              `/api/profiles/${profile.id}`,
-              {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(extractPayload()),
-              },
-              'extract-save'
-            )
-          }
-        >
-          {busy === 'extract-save' ? '저장 중…' : '추출 저장'}
-        </StampButton>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <StampButton
+            tone="ghost"
+            className="min-h-10 px-3 py-2 text-sm"
+            disabled={!!busy}
+            onClick={() =>
+              call(
+                `/api/profiles/${profile.id}`,
+                {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(extractPayload()),
+                },
+                'extract-save'
+              )
+            }
+          >
+            {busy === 'extract-save' ? '저장 중…' : '추출 저장'}
+          </StampButton>
+          <StampButton
+            tone="blue"
+            className="min-h-10 px-3 py-2 text-sm"
+            disabled={!!busy}
+            onClick={async () => {
+              if (dirty && !confirm('작성 중인 내용이 있습니다. 새 초안으로 덮어쓸까요?')) return;
+              const result = await call(
+                `/api/profiles/${profile.id}/compose`,
+                { method: 'POST' },
+                'compose'
+              );
+              if (result?.profile?.draftBody != null) {
+                setBody(result.profile.draftBody);
+                setDirty(true);
+              }
+            }}
+          >
+            {busy === 'compose' ? '작문 중…' : '문구 작성'}
+          </StampButton>
+        </div>
       </details>
 
-      <label className="flex flex-col gap-2">
-        <span className="text-sm font-bold text-fog-muted">게시 문구 (번호 없이 ✨로 시작)</span>
+      {/* 복사 버튼을 label 안에 두면 암묵적 연결 때문에 textarea의 접근명이
+          "게시 문구 … 복사"가 되고, 누를 때마다 "복사됨"으로 바뀐다. 헤더 행을
+          label 밖으로 빼고 htmlFor로 명시적으로 연결한다. */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <label htmlFor={finalBodyId} className="text-sm font-bold text-fog-muted">
+            게시 문구 (번호 없이 ✨로 시작)
+          </label>
+          <StampButton
+            type="button"
+            tone="ghost"
+            className="min-h-8 px-3 py-1 text-xs"
+            onClick={copyBody}
+          >
+            {copied ? '복사됨' : '복사'}
+          </StampButton>
+        </div>
         <textarea
+          id={finalBodyId}
           value={body}
           onChange={(e) => {
             setBody(e.target.value);
@@ -272,7 +341,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
           rows={18}
           className="rounded-[12px] border-2 border-edge bg-card p-4 text-sm text-on-card"
         />
-      </label>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <StampButton

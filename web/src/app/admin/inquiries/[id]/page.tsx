@@ -147,7 +147,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
           )}
           {inquiry.note && (
             <>
-              <h4 className="mb-1 mt-3 text-xs font-bold text-muted-on-card">메모 / DM 원문</h4>
+              <h4 className="mb-1 mt-3 text-xs font-bold text-muted-on-card">메모 / 받은 자기소개글</h4>
               <pre className="max-h-32 overflow-auto whitespace-pre-wrap text-xs text-on-card">
                 {inquiry.note}
               </pre>
@@ -174,7 +174,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
       />
 
       <section className="mt-5">
-        <h3 className="mb-3 text-sm font-bold text-fog-muted">이 문의의 전달 큐</h3>
+        <h3 className="mb-3 text-sm font-bold text-fog-muted">이 건의 보낼 메시지</h3>
         {inquiry.deliveries.length === 0 ? (
           <p className="text-sm text-fog-muted">아직 전달 항목이 없습니다.</p>
         ) : (

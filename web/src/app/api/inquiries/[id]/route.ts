@@ -15,7 +15,7 @@ export async function GET(_request: Request, { params }: Params) {
       deliveries: { orderBy: { createdAt: 'desc' } },
     },
   });
-  if (!inquiry) return NextResponse.json({ error: '없는 관심 문의입니다.' }, { status: 404 });
+  if (!inquiry) return NextResponse.json({ error: '없는 관심 건입니다.' }, { status: 404 });
   return NextResponse.json({ inquiry });
 }
 

@@ -65,7 +65,7 @@ export function ApplyForm() {
           </label>
         </div>
         <label className="flex flex-col gap-1">
-          <span className={labelClass}>연락받을 스레드 핸들 (필수)</span>
+          <span className={labelClass}>연락받을 스레드 아이디 (필수)</span>
           <input name="handle" className={fieldClass} placeholder="@my_threads" maxLength={60} required />
         </label>
       </Section>

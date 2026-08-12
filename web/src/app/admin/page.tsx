@@ -91,7 +91,7 @@ export default async function AdminHome({
       >
         {profiles.length === 0 ? (
           <div className="rounded-[12px] border-2 border-dashed border-edge px-6 py-10 text-sm text-fog-muted">
-            「새 프로필」로 DM 원문과 사진을 올리면 여기에 카드가 쌓입니다.
+            「새 프로필」로 받은 자기소개글과 사진을 올리면 여기에 카드가 쌓입니다.
           </div>
         ) : (
           profiles.map((p, i) => (

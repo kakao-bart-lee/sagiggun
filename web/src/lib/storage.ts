@@ -2,9 +2,15 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getEnv } from '@/lib/env';
 
-export const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-export const MAX_BYTES = 10 * 1024 * 1024;
-export const MAX_PHOTOS_PER_PROFILE = 10;
+// 상한은 클라이언트 드롭존과 공유해야 하므로 @/lib/limits가 단일 출처다.
+// 기존 import 경로를 깨지 않기 위해 여기서 그대로 re-export한다.
+export {
+  ALLOWED_TYPES,
+  MAX_BYTES,
+  MAX_PHOTOS_PER_PROFILE,
+} from '@/lib/limits';
+
+import { ALLOWED_TYPES, MAX_BYTES, MAX_PHOTOS_PER_PROFILE } from '@/lib/limits';
 
 const EXTENSION: Record<string, string> = {
   'image/jpeg': 'jpg',

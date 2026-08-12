@@ -79,7 +79,7 @@ export function MatchPanel({ profileId }: { profileId: string }) {
       setMessage(data.error ?? '처리에 실패했습니다.');
       return;
     }
-    if (action === 'ACCEPT') setMessage('전달 큐에 2건이 추가되었습니다.');
+    if (action === 'ACCEPT') setMessage('보낼 메시지에 2건을 담았습니다.');
     await load();
     router.refresh();
   }

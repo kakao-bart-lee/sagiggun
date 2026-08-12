@@ -87,7 +87,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
           </Panel>
 
           <Panel className="flex-1">
-            <h3 className="mb-3 text-sm font-bold text-muted-on-card">DM 원문</h3>
+            <h3 className="mb-3 text-sm font-bold text-muted-on-card">받은 자기소개글</h3>
             <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap text-sm leading-relaxed text-on-card">
               {profile.rawText}
             </pre>
@@ -118,7 +118,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 
       {inquiries.length > 0 && (
         <section className="mt-5 rounded-[12px] border-2 border-edge bg-card p-4 text-on-card">
-          <h3 className="mb-3 text-sm font-bold text-muted-on-card">관심 문의</h3>
+          <h3 className="mb-3 text-sm font-bold text-muted-on-card">받은 관심</h3>
           <ul className="flex flex-col gap-2">
             {inquiries.map((inq) => (
               <li key={inq.id}>

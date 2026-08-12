@@ -11,7 +11,10 @@ const createBody = z.object({
 export async function POST(request: Request) {
   const parsed = createBody.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: '핸들과 원문이 필요합니다.' }, { status: 400 });
+    return NextResponse.json(
+      { error: '스레드 아이디와 받은 자기소개글이 필요합니다.' },
+      { status: 400 }
+    );
   }
 
   const handle = parsed.data.sourceHandle.trim().replace(/^@/, '');
