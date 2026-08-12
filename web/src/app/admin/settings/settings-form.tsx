@@ -119,7 +119,8 @@ export function LlmSettingsForm({ initial }: { initial: PublicLlmConfig }) {
             placeholder={openaiConfigured ? '기존 키 유지' : 'sk-...'}
           />
         </label>
-        <label className="mt-3 flex items-center gap-2 text-xs font-normal text-muted-on-card">
+        {/* text-xs 줄높이(16px)만 탭 영역이라 WCAG 2.5.8 최소(24px) 미달이었다. py-1로 넓힌다. */}
+        <label className="mt-3 flex items-center gap-2 py-1 text-xs font-normal text-muted-on-card">
           <input
             type="checkbox"
             checked={clearOpenaiApiKey}
@@ -139,7 +140,8 @@ export function LlmSettingsForm({ initial }: { initial: PublicLlmConfig }) {
             placeholder={anthropicConfigured ? '기존 키 유지' : 'sk-ant-...'}
           />
         </label>
-        <label className="mt-3 flex items-center gap-2 text-xs font-normal text-muted-on-card">
+        {/* text-xs 줄높이(16px)만 탭 영역이라 WCAG 2.5.8 최소(24px) 미달이었다. py-1로 넓힌다. */}
+        <label className="mt-3 flex items-center gap-2 py-1 text-xs font-normal text-muted-on-card">
           <input
             type="checkbox"
             checked={clearAnthropicApiKey}

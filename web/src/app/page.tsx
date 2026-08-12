@@ -1,7 +1,32 @@
 import Link from 'next/link';
+import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 
+// export const revalidate = 60 (세그먼트 단위 ISR)를 먼저 시도했는데, 그러면 next build가
+// 이 페이지를 정적으로 미리 렌더링하려 들면서 빌드 스테이지에 실제 DB가 없어(Dockerfile 주석
+// 참고, DATABASE_URL은 build-time-placeholder) ECONNREFUSED로 빌드가 죽었다. dynamic은
+// force-dynamic으로 두어 빌드가 이 페이지를 건드리지 않게 하고, 대신 조회 자체를
+// unstable_cache로 감싼다 — 라우트 캐시 모드와 무관하게 60초에 한 번만 실제 DB를 읽는다.
 export const dynamic = 'force-dynamic';
+
+// 게시는 운영자가 수동으로 승인·발행하는 드문 이벤트라 초 단위로 최신일 필요가 없다.
+const getPublishedProfiles = unstable_cache(
+  () =>
+    prisma.profile.findMany({
+      where: { status: 'PUBLISHED', seq: { not: null }, finalBody: { not: null } },
+      select: {
+        seq: true,
+        gender: true,
+        birthYear: true,
+        region: true,
+        finalBody: true,
+      },
+      orderBy: { seq: 'desc' },
+      take: 60,
+    }),
+  ['public-published-profiles'],
+  { revalidate: 60 }
+);
 
 // 공개 홈 — 스레드 홍보를 대체/보완하는 후보 목록.
 // 게시(PUBLISHED = 승인 + 게시 번호 발급)된 프로필의 소개글만 보여준다.
@@ -19,18 +44,7 @@ function excerpt(body: string, maxLines = 4): string {
 }
 
 export default async function PublicHome() {
-  const profiles = await prisma.profile.findMany({
-    where: { status: 'PUBLISHED', seq: { not: null }, finalBody: { not: null } },
-    select: {
-      seq: true,
-      gender: true,
-      birthYear: true,
-      region: true,
-      finalBody: true,
-    },
-    orderBy: { seq: 'desc' },
-    take: 60,
-  });
+  const profiles = await getPublishedProfiles();
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">

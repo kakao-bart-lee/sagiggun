@@ -1,9 +1,21 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { InterestForm } from './interest-form';
 
-export const dynamic = 'force-dynamic';
+// 홈(page.tsx)과 같은 이유로 세그먼트 revalidate 대신 unstable_cache를 쓴다 — 빌드 스테이지에
+// DB가 없어 정적 프리렌더가 ECONNREFUSED로 죽는다. dynamic은 그대로 두어 빌드가 건드리지 않고,
+// 조회만 60초 캐시한다.
+const getPublishedProfileBySeq = unstable_cache(
+  (seqNum: number) =>
+    prisma.profile.findFirst({
+      where: { seq: seqNum, status: 'PUBLISHED', finalBody: { not: null } },
+      select: { seq: true, finalBody: true },
+    }),
+  ['public-profile-by-seq'],
+  { revalidate: 60 }
+);
 
 // 후보 상세 — 게시 번호(seq)로만 접근한다. 내부 id·핸들·사진은 노출하지 않는다.
 export default async function CandidatePage({ params }: { params: Promise<{ seq: string }> }) {
@@ -11,10 +23,7 @@ export default async function CandidatePage({ params }: { params: Promise<{ seq:
   const seqNum = Number(seq);
   if (!Number.isInteger(seqNum) || seqNum <= 0) notFound();
 
-  const profile = await prisma.profile.findFirst({
-    where: { seq: seqNum, status: 'PUBLISHED', finalBody: { not: null } },
-    select: { seq: true, finalBody: true },
-  });
+  const profile = await getPublishedProfileBySeq(seqNum);
   if (!profile) notFound();
 
   return (

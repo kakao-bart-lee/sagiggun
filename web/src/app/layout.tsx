@@ -10,6 +10,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
+        {/* 폰트 CSS와 그 안의 woff2가 모두 이 오리진에서 온다. 커넥션을 미리 열어 두면
+            연결 왕복(DNS+TLS)이 CSS 요청 자체와 겹치지 않고 먼저 끝난다. */}
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
