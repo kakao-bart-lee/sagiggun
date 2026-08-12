@@ -4,21 +4,36 @@ import { LogoutButton } from '@/components/logout-button';
 
 export function AdminTopBar({ right }: { right?: React.ReactNode }) {
   return (
-    <header className="mb-8 flex items-center justify-between gap-4">
-      <Link href="/admin" className="text-[22px] font-extrabold tracking-tight text-fog">
+    // header가 nowrap이라 375px에서 wordmark + 6개 항목이 한 줄에 눌려 들어가려다
+    // 링크마다 글자 단위로 줄바꿈되고 있었다. flex-wrap을 주고 각 항목엔
+    // shrink-0 + whitespace-nowrap을 줘서, 안 맞으면 "항목 전체"가 다음 줄로
+    // 내려가지 "글자"가 쪼개지진 않게 한다.
+    <header className="mb-8 flex flex-wrap items-center justify-between gap-y-2 gap-x-4">
+      <Link href="/admin" className="shrink-0 text-[22px] font-extrabold tracking-tight text-fog">
         Some Love
       </Link>
-      <nav className="flex items-center gap-4 text-sm text-fog-muted">
-        <Link href="/admin" className="hover:text-fog">
+      {/* 2글자 라벨(목록/설정)이 패딩 없이는 24px 폭에 못 미쳐 WCAG 2.5.8을 어겼다.
+          px-1.5 py-2를 전 항목에 균등하게 줘서 탭 영역을 넓힌다. */}
+      <nav className="flex flex-wrap items-center gap-4 text-sm text-fog-muted">
+        <Link href="/admin" className="shrink-0 whitespace-nowrap px-1.5 py-2 hover:text-fog">
           목록
         </Link>
-        <Link href="/admin/inquiries" className="hover:text-fog">
+        <Link
+          href="/admin/inquiries"
+          className="shrink-0 whitespace-nowrap px-1.5 py-2 hover:text-fog"
+        >
           받은 관심
         </Link>
-        <Link href="/admin/deliveries" className="hover:text-fog">
+        <Link
+          href="/admin/deliveries"
+          className="shrink-0 whitespace-nowrap px-1.5 py-2 hover:text-fog"
+        >
           보낼 메시지
         </Link>
-        <Link href="/admin/settings" className="hover:text-fog">
+        <Link
+          href="/admin/settings"
+          className="shrink-0 whitespace-nowrap px-1.5 py-2 hover:text-fog"
+        >
           설정
         </Link>
         {right}

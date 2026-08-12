@@ -186,7 +186,9 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
 
       <details open className="rounded-[12px] border-2 border-edge bg-card p-4 text-on-card">
         <summary className="cursor-pointer text-sm font-bold text-muted-on-card">추출된 항목</summary>
-        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        {/* 브레이크포인트 없이 항상 2열이라 375px에서 필드마다 140px로 눌렸다(특히
+            "이상형 출생연도 이른 쪽" 같은 긴 라벨). sm 밑에서는 1열로 푼다. */}
+        <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <label className="flex flex-col gap-1">
             <span className={labelClass}>성별</span>
             <select
@@ -221,7 +223,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
               inputMode="numeric"
             />
           </label>
-          <label className="col-span-2 flex flex-col gap-1">
+          <label className="sm:col-span-2 flex flex-col gap-1">
             <span className={labelClass}>직업</span>
             <input value={job} onChange={(e) => setJob(e.target.value)} className={fieldClass} />
           </label>
@@ -282,11 +284,11 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             />
           </label>
           {partnerAgeRange(partnerMin, partnerMax) && (
-            <p className="col-span-2 -mt-1 text-xs font-bold text-muted-on-card">
+            <p className="sm:col-span-2 -mt-1 text-xs font-bold text-muted-on-card">
               → {partnerAgeRange(partnerMin, partnerMax)}
             </p>
           )}
-          <label className="col-span-2 flex flex-col gap-1">
+          <label className="sm:col-span-2 flex flex-col gap-1">
             <span className={labelClass}>절대 안 되는 것</span>
             <textarea
               value={dealBreakers}

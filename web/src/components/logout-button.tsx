@@ -8,7 +8,8 @@ export function LogoutButton() {
   return (
     <button
       type="button"
-      className="hover:text-fog"
+      // 나머지 nav 항목과 같은 이유로 px-1.5 py-2 — 텍스트 줄높이만으로는 24px 미달.
+      className="shrink-0 whitespace-nowrap px-1.5 py-2 hover:text-fog"
       onClick={async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/admin/login');
