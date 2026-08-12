@@ -10,16 +10,36 @@
   --field: #eceae6;
   --on-card: #2f3338;
   --muted-on-card: #5c6168;
-  /* Soft fog type on ink */
-  --fog: #c8c6c2;
-  --fog-muted: #8b9098;
   --edge: #3d424a;
   --card-line: #c5cdd8;
   --thumb: #cfcbc6;
-  /* Telop accents slightly desaturated to cut glare */
-  --yellow: #e6d05a;
-  --red: #e85a72;
-  --blue: #5a8eef;
+
+  /* Ink-surface palette. These are the -base values; the live tokens below point
+     at them and get re-pointed on paper surfaces (see "Surface-scoped palette"). */
+  /* Soft fog type on ink */
+  --fog-base: #c8c6c2;
+  --fog-muted-base: #8b9098;
+  /* Telop accents slightly desaturated to cut glare.
+     Red and blue are nudged ~10% lighter than the original #e85a72 / #5a8eef:
+     as 11px seal labels on --ink-elevated those sat at 4.21:1 and 4.49:1, just
+     under AA. The shift is imperceptible; the ratios now clear 4.5:1. */
+  --yellow-base: #e6d05a;
+  --red-base: #ea6a80;
+  --blue-base: #6a99f1;
+
+  /* Paper-surface counterparts. The ink accents sit at 1.2–2.7:1 on --card,
+     so they need darker twins for text on paper (all ≥4.8:1). */
+  --yellow-on-paper: #7a5c00;
+  --red-on-paper: #b3243f;
+  --blue-on-paper: #1f4fa8;
+
+  /* Live tokens — default to the ink surface. */
+  --fog: var(--fog-base);
+  --fog-muted: var(--fog-muted-base);
+  --yellow: var(--yellow-base);
+  --red: var(--red-base);
+  --blue: var(--blue-base);
+
   --font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
@@ -64,6 +84,42 @@
     line-height: 1.45;
     font-weight: 500;
     -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Surface-scoped palette
+   ----------------------
+   This app has two grounds: dark ink and warm paper. The telop accents and fog
+   type are tuned for ink and fail badly as text on paper — measured against
+   --card: yellow 1.2:1, fog 1.32:1, blue 2.48:1, red 2.65:1 (AA wants 4.5:1).
+   That is why messages and links inside panels kept coming out unreadable.
+
+   Rather than auditing every call site forever, re-point the tokens per surface:
+   anything painted with a paper background swaps in the paper twins, so every
+   descendant picks them up automatically.
+
+   Paper cards still contain dark chips — stamp buttons, status seals, the
+   drag-active drop zone — and every one of them carries a bg-ink-* class. Those
+   reset back to the base values so the bright telop look is preserved exactly.
+   Keep that invariant: a dark chip must declare a bg-ink-* class. */
+@layer base {
+  .bg-card,
+  .bg-field,
+  .bg-thumb {
+    --fog: var(--on-card);
+    --fog-muted: var(--muted-on-card);
+    --yellow: var(--yellow-on-paper);
+    --red: var(--red-on-paper);
+    --blue: var(--blue-on-paper);
+  }
+
+  .bg-ink,
+  .bg-ink-elevated {
+    --fog: var(--fog-base);
+    --fog-muted: var(--fog-muted-base);
+    --yellow: var(--yellow-base);
+    --red: var(--red-base);
+    --blue: var(--blue-base);
   }
 }
 

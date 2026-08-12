@@ -12,8 +12,8 @@ colors:
   fog-muted: "#8b9098"
   edge: "#3d424a"
   yellow: "#e6d05a"
-  red: "#e85a72"
-  blue: "#5a8eef"
+  red: "#ea6a80"
+  blue: "#6a99f1"
   card-line: "#c5cdd8"
   thumb: "#cfcbc6"
 typography:
@@ -126,14 +126,36 @@ Copy never uses 「입수」. Prefer 「새 프로필」, 「오늘 세션」, �
 Used as **outline + label chroma**, slightly desaturated to cut glare.
 
 - **Yellow** (`{colors.yellow}` — #e6d05a): primary stamp CTA, COLLECTED/대기 seals.
-- **Red** (`{colors.red}` — #e85a72): APPROVED seals, delete stamp.
-- **Blue** (`{colors.blue}` — #5a8eef): selected card ring, DRAFTED seals, compose stamp, focus ring.
+- **Red** (`{colors.red}` — #ea6a80): APPROVED seals, delete stamp.
+- **Blue** (`{colors.blue}` — #6a99f1): selected card ring, DRAFTED seals, compose stamp, focus ring.
 
 ### Neutrals
 
 - **Fog muted** / **muted on card**: secondary labels.
 - **Edge** (`{colors.edge}` — #3d424a): borders instead of pure black.
 - **Thumb** (`{colors.thumb}`): empty photo placeholders.
+
+### Surface-scoped palette
+
+The accents and fog type above are tuned for the **ink** ground and fail as text
+on **paper**: against `{colors.card}` they measure yellow 1.2:1, fog 1.32:1,
+blue 2.48:1, red 2.65:1 — far under the 4.5:1 floor. Messages and links inside
+panels kept shipping unreadable because of this.
+
+So the tokens are re-pointed per surface in `globals.css`, not per call site.
+Anything painted with a paper background (`bg-card` / `bg-field` / `bg-thumb`)
+swaps in darker paper twins, and every descendant inherits them:
+
+- **Yellow on paper** — #7a5c00 (4.83:1)
+- **Red on paper** — #b3243f (5.01:1)
+- **Blue on paper** — #1f4fa8 (5.92:1)
+- **Fog / fog-muted on paper** — fall back to on-card / muted-on-card
+
+Paper cards still hold dark chips — stamp buttons, status seals, the drag-active
+drop zone — and each resets to the ink values. **Invariant: a dark chip must
+declare a `bg-ink-*` class**, or it will pick up the paper palette and go dark
+on dark. Write text colors with the plain tokens (`text-yellow`, `text-fog`);
+the surface decides the rest.
 
 ## Typography
 

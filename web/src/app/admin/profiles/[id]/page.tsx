@@ -88,7 +88,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 
           <Panel className="flex-1">
             <h3 className="mb-3 text-sm font-bold text-muted-on-card">받은 자기소개글</h3>
-            <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap text-sm leading-relaxed text-on-card">
+            <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap text-sm leading-snug text-on-card">
               {profile.rawText}
             </pre>
           </Panel>

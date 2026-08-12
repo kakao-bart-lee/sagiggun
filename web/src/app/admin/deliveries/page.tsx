@@ -31,12 +31,13 @@ export default async function DeliveriesPage() {
 
       <h2 className="mb-2 text-xl font-extrabold text-fog">보낼 메시지</h2>
       <p className="mb-2 text-sm text-fog-muted">
-        대기 {pendingCount}건. 확장에서 문구를 넣은 뒤 운영자가 Threads에서 보냅니다 (자동 전송
-        없음).
+        보낼 차례인 메시지 {pendingCount}건이에요. 아래 문구를 스레드 DM으로 직접 보내주세요.
+        저절로 발송되는 일은 없습니다.
       </p>
       <p className="mb-6 text-xs text-fog-muted">
-        확장 연동: `.env`의 `OPS_API_TOKEN`(16자+)과 관리자 URL을 확장 옵션에 저장하세요. 토큰 값은
-        이 화면에 표시하지 않습니다.
+        크롬 확장을 설치하면 이 문구를 스레드 DM 입력창까지 자동으로 채워줍니다. 그래도 보내기
+        버튼은 직접 누르셔야 해요. 확장 설정에 관리자 주소와 `OPS_API_TOKEN`(16자 이상)을 넣어두면
+        연동됩니다.
       </p>
 
       {items.length === 0 ? (
@@ -74,7 +75,7 @@ export default async function DeliveriesPage() {
                     {STATUS_KO[item.status] ?? item.status}
                   </span>
                 </div>
-                <pre className="mb-3 max-h-40 overflow-auto whitespace-pre-wrap text-sm text-on-card">
+                <pre className="mb-3 max-h-40 overflow-auto whitespace-pre-wrap text-sm leading-snug text-on-card">
                   {item.body}
                 </pre>
                 <DeliveryActions id={item.id} status={item.status} />

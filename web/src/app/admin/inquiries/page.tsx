@@ -52,15 +52,23 @@ export default async function InquiriesPage({
   const params = await searchParams;
   const filter = parseFilter(params.f);
 
-  const inquiries = await prisma.inquiry.findMany({
-    where: whereFor(filter),
-    include: {
-      target: { select: { id: true, seq: true, sourceHandle: true } },
-      fromProfile: { select: { id: true, sourceHandle: true } },
-    },
-    orderBy: { updatedAt: 'desc' },
-    take: 100,
-  });
+  const [inquiries, published] = await Promise.all([
+    prisma.inquiry.findMany({
+      where: whereFor(filter),
+      include: {
+        target: { select: { id: true, seq: true, sourceHandle: true } },
+        fromProfile: { select: { id: true, sourceHandle: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+    }),
+    // 관심은 게시글을 보고 오는 것이므로, 실제로 게시돼 번호가 붙은 프로필만 고를 수 있게 한다.
+    prisma.profile.findMany({
+      where: { status: 'PUBLISHED', seq: { not: null } },
+      select: { seq: true, sourceHandle: true, region: true, birthYear: true, gender: true },
+      orderBy: { seq: 'desc' },
+    }),
+  ]);
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
@@ -74,7 +82,15 @@ export default async function InquiriesPage({
 
       <Panel className="mb-6">
         <h3 className="mb-3 text-sm font-bold text-muted-on-card">새 관심 접수</h3>
-        <NewInquiryForm />
+        <NewInquiryForm
+          posts={published.map((p) => ({
+            seq: p.seq as number,
+            handle: p.sourceHandle,
+            region: p.region,
+            birthYear: p.birthYear,
+            gender: p.gender,
+          }))}
+        />
       </Panel>
 
       <nav className="mb-6 flex flex-wrap gap-2">

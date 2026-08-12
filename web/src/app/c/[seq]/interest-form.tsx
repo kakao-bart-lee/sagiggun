@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { withAtPrefix } from '@/lib/ui';
 
 const fieldClass = 'rounded-[8px] border-2 border-edge bg-field p-3 text-sm text-on-card';
 
@@ -51,7 +52,7 @@ export function InterestForm({ targetSeq }: { targetSeq: number }) {
         <span className="text-xs font-bold text-muted-on-card">내 스레드 아이디 (필수)</span>
         <input
           value={handle}
-          onChange={(e) => setHandle(e.target.value)}
+          onChange={(e) => setHandle(withAtPrefix(e.target.value))}
           className={fieldClass}
           placeholder="@my_threads"
           maxLength={60}

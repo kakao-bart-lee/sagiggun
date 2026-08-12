@@ -36,6 +36,22 @@ function listToLines(values: string[]): string {
 }
 
 /**
+ * 이상형 나이 범위를 사람이 읽는 순서(어린 쪽 → 많은 쪽)로 요약한다.
+ * 출생연도가 작을수록 나이가 많으므로 min/max와 순서가 뒤집힌다 — 그 혼란을 없애는 것이 목적이다.
+ */
+function partnerAgeRange(minYear: string, maxYear: string): string {
+  const early = Number(minYear.trim());
+  const late = Number(maxYear.trim());
+  if (!minYear.trim() || !maxYear.trim() || !Number.isFinite(early) || !Number.isFinite(late)) {
+    return '';
+  }
+  const now = new Date().getFullYear();
+  const [youngest, oldest] = [now - Math.max(early, late), now - Math.min(early, late)];
+  const [fromYear, toYear] = [Math.min(early, late), Math.max(early, late)];
+  return `${youngest}~${oldest}세 (${fromYear}~${toYear}년생)`;
+}
+
+/**
  * 출생연도 입력값을 나이로 환산해 라벨에 덧붙인다. 추출된 연도가 실제 나이와 맞는지
  * 사람이 한눈에 검산할 수 있게 하기 위함이다.
  *
@@ -245,8 +261,10 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
               className={fieldClass}
             />
           </label>
+          {/* 「최소/최대」는 출생연도 기준이라 사람이 나이로 읽으면 거꾸로 보인다
+              (최소=1995=31세). 「이른 쪽/늦은 쪽」으로 바꾸고 아래에 나이 범위를 함께 적는다. */}
           <label className="flex flex-col gap-1">
-            <span className={labelClass}>이상형 출생연도 최소{ageLabel(partnerMin)}</span>
+            <span className={labelClass}>이상형 출생연도 이른 쪽{ageLabel(partnerMin)}</span>
             <input
               value={partnerMin}
               onChange={(e) => setPartnerMin(e.target.value)}
@@ -255,7 +273,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className={labelClass}>이상형 출생연도 최대{ageLabel(partnerMax)}</span>
+            <span className={labelClass}>이상형 출생연도 늦은 쪽{ageLabel(partnerMax)}</span>
             <input
               value={partnerMax}
               onChange={(e) => setPartnerMax(e.target.value)}
@@ -263,6 +281,11 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
               inputMode="numeric"
             />
           </label>
+          {partnerAgeRange(partnerMin, partnerMax) && (
+            <p className="col-span-2 -mt-1 text-xs font-bold text-muted-on-card">
+              → {partnerAgeRange(partnerMin, partnerMax)}
+            </p>
+          )}
           <label className="col-span-2 flex flex-col gap-1">
             <span className={labelClass}>절대 안 되는 것</span>
             <textarea
@@ -339,7 +362,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             setDirty(true);
           }}
           rows={18}
-          className="rounded-[12px] border-2 border-edge bg-card p-4 text-sm text-on-card"
+          className="rounded-[12px] border-2 border-edge bg-card p-4 text-sm leading-snug text-on-card"
         />
       </div>
 

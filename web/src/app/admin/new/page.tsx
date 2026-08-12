@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import { AdminTopBar, Panel, StampButton } from '@/components/admin-ui';
-import { cn } from '@/lib/ui';
+import { cn, withAtPrefix } from '@/lib/ui';
 import {
   ALLOWED_TYPES,
   MAX_BATCH_BYTES,
@@ -87,7 +87,7 @@ export default function NewProfilePage() {
             <span className="text-sm font-bold text-muted-on-card">스레드 아이디</span>
             <input
               value={sourceHandle}
-              onChange={(e) => setHandle(e.target.value)}
+              onChange={(e) => setHandle(withAtPrefix(e.target.value))}
               placeholder="@minsu_92"
               required
               className="rounded-[8px] border-2 border-edge bg-field p-3 text-on-card"
@@ -105,7 +105,7 @@ export default function NewProfilePage() {
               rows={12}
               required
               placeholder="스레드 DM으로 받은 자기소개 원문을 그대로 붙여넣어 주세요."
-              className="rounded-[8px] border-2 border-edge bg-field p-3 font-mono text-sm text-on-card"
+              className="rounded-[8px] border-2 border-edge bg-field p-3 font-mono text-sm leading-snug text-on-card"
             />
           </label>
 
