@@ -4,7 +4,7 @@ const ADMIN_PASSWORD = 'e2e-admin-password';
 const OPS_TOKEN = 'e2e-ops-token-16chars';
 
 test.describe('UI smoke', () => {
-  test('로그인 후 시드 카드와 전달 큐 페이지', async ({ page }) => {
+  test('로그인 후 시드 카드와 보낼 메시지 페이지', async ({ page }) => {
     await page.goto('/admin/login');
     await page.locator('input[type="password"]').fill(ADMIN_PASSWORD);
     await page.getByRole('button', { name: '로그인' }).click();
@@ -13,9 +13,9 @@ test.describe('UI smoke', () => {
     await expect(page.getByText('Some Love')).toBeVisible();
     await expect(page.getByText('mina_seoul')).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole('link', { name: '전달 큐' }).click();
+    await page.getByRole('link', { name: '보낼 메시지' }).click();
     await expect(page).toHaveURL(/\/admin\/deliveries/);
-    await expect(page.getByRole('heading', { name: '전달 큐' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '보낼 메시지' })).toBeVisible();
 
     await page.getByRole('link', { name: '설정' }).click();
     await expect(page).toHaveURL(/\/admin\/settings/);

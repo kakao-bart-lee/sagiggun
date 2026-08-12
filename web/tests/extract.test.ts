@@ -53,6 +53,15 @@ describe('extractFields', () => {
     expect(JSON.stringify(args.messages)).toContain('나는 02년생입니다');
   });
 
+  it('"27살"류 만 나이를 출생연도로 잘못 환산하지 않도록 기준연도를 함께 보낸다', async () => {
+    const parse = vi.fn(async (_args: unknown) => ({ parsed_output: valid }));
+    await extractFields('27 / 여 / 154', { parse });
+    const args = parse.mock.calls[0][0] as { messages: Array<{ content: string }> };
+    const content = args.messages[0].content;
+    expect(content).toMatch(/<기준연도>\d{4}<\/기준연도>/);
+    expect(content).toContain(String(new Date().getFullYear()));
+  });
+
   it('금지된 샘플링 파라미터를 보내지 않는다', async () => {
     const parse = vi.fn(async (_args: unknown) => ({ parsed_output: valid }));
     await extractFields('원문', { parse });
@@ -87,5 +96,15 @@ describe('EXTRACT_SYSTEM', () => {
 
   it('출생연도로 저장하라고 지시한다', () => {
     expect(EXTRACT_SYSTEM).toMatch(/출생연도/);
+  });
+
+  it('만 나이 숫자를 기준연도로 환산하는 규칙을 포함한다', () => {
+    expect(EXTRACT_SYSTEM).toMatch(/기준연도/);
+  });
+
+  it('이상형 나이차이(위로/아래로 N살) 환산 규칙을 포함한다', () => {
+    expect(EXTRACT_SYSTEM).toMatch(/나이차이/);
+    expect(EXTRACT_SYSTEM).toMatch(/위로/);
+    expect(EXTRACT_SYSTEM).toMatch(/아래로/);
   });
 });

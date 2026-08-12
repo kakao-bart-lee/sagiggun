@@ -29,7 +29,7 @@ test.describe.serial('API e2e — intake → LLM mock → match → delivery', (
     expect(body.profiles.length).toBeGreaterThan(0);
   });
 
-  test('시드 프로필로 매칭·수락·전달 큐', async ({ request }) => {
+  test('시드 프로필로 매칭·수락·보낼 메시지', async ({ request }) => {
     const api = ops(request);
     const list = await api.get('/api/profiles?status=PUBLISHED');
     expect(list.status(), await list.text()).toBe(200);

@@ -29,7 +29,7 @@ export default async function DeliveriesPage() {
     <main className="mx-auto max-w-3xl px-6 py-8">
       <AdminTopBar right={<StampLink href="/admin/new">새 프로필</StampLink>} />
 
-      <h2 className="mb-2 text-xl font-extrabold text-fog">전달 큐</h2>
+      <h2 className="mb-2 text-xl font-extrabold text-fog">보낼 메시지</h2>
       <p className="mb-2 text-sm text-fog-muted">
         대기 {pendingCount}건. 확장에서 문구를 넣은 뒤 운영자가 Threads에서 보냅니다 (자동 전송
         없음).

@@ -40,37 +40,35 @@
   --font-sans: var(--font);
 }
 
-* {
-  box-sizing: border-box;
+/* Tailwind utilities live in @layer utilities, so anything written unlayered here
+   would beat every utility class on the same element regardless of specificity.
+   That is what broke colored controls: an unlayered `a { color: inherit }` and
+   `button, input, textarea { font: inherit }` silently killed text-yellow /
+   hover:text-ink / text-[15px] on StampLink and StampButton.
+
+   Tailwind's own preflight (also @layer base) already provides box-sizing,
+   margin: 0, `a { color: inherit; text-decoration: inherit }` and
+   `font: inherit` for form controls, so those resets are not repeated here.
+   Preflight has no `body` rule, which is why the body block below stays. */
+@layer base {
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    background: var(--ink);
+    color: var(--fog);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.45;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+  }
 }
 
-html,
-body {
-  min-height: 100%;
-}
-
-body {
-  margin: 0;
-  background: var(--ink);
-  color: var(--fog);
-  font-family: var(--font);
-  font-size: 14px;
-  line-height: 1.45;
-  font-weight: 500;
-  -webkit-font-smoothing: antialiased;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button,
-input,
-textarea {
-  font: inherit;
-}
-
+/* Deliberately unlayered: this must outrank utilities so no utility class can
+   remove a keyboard focus ring. Do not move it into @layer base. */
 :focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;

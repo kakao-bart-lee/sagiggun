@@ -14,7 +14,7 @@ export function InterestForm({ targetSeq }: { targetSeq: number }) {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!handle.trim()) {
-      setError('스레드 핸들을 입력해 주세요.');
+      setError('스레드 아이디를 입력해 주세요.');
       return;
     }
     setBusy(true);
@@ -48,7 +48,7 @@ export function InterestForm({ targetSeq }: { targetSeq: number }) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-bold text-muted-on-card">내 스레드 핸들 (필수)</span>
+        <span className="text-xs font-bold text-muted-on-card">내 스레드 아이디 (필수)</span>
         <input
           value={handle}
           onChange={(e) => setHandle(e.target.value)}

@@ -59,21 +59,28 @@ export function mockCompose(fields: Extracted): string {
 
   return `✨ ${fields.region ?? '서울'}에 거주중인 ${year}년생 ${genderKo}분 입니다.
 ${fields.job ?? '회사원'}에서 근무중이신 ${fields.heightCm ?? 170}cm 단정한 인상 🙂
+
 취미: ${hobbies}
-사진처럼 맑고 밝은 인상입니다.
-정돈된 분위기예요.
+
+이 분은 웃을 때 눈이 접히는 고양이? 강아지상이에요🐱🐶
+차분해 보이지만 친해지면 장난기 많을 것 같은 느낌 ㅎㅎ
+
 본인의 장점은 💖
 1. ${appeals[0] ?? '성실함'}
 2. ${appeals[1] ?? '대화 잘함'}
 3. ${appeals[2] ?? '배려'}
+
 이상형은 📌
 1. ${ideals[0] ?? '바른 생활'}
 2. ${ideals[1] ?? '유머'}
 3. ${ideals[2] ?? '성실'}
+
 ✔️ ${yearRange} 가능해요!
 ✔️ ${(fields.partnerRegions ?? ['서울']).join(', ')} 가능해요!
+
 ❌이건 절대 안 돼요.
 ${deals}
+
 📨 관심 있으신 분은 메세지 주세요!`;
 }
 

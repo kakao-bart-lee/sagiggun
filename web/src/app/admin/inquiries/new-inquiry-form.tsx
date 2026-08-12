@@ -22,7 +22,7 @@ export function NewInquiryForm() {
       return;
     }
     if (!fromHandle.trim()) {
-      setMessage('관심 보낸 분의 핸들을 입력하세요.');
+      setMessage('관심 보낸 분의 스레드 아이디를 입력하세요.');
       return;
     }
     setBusy(true);
@@ -64,7 +64,7 @@ export function NewInquiryForm() {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-on-card">관심 보낸 핸들</span>
+          <span className="text-xs font-bold text-muted-on-card">관심 보낸 스레드 아이디</span>
           <input
             value={fromHandle}
             onChange={(e) => setFromHandle(e.target.value)}
@@ -74,7 +74,7 @@ export function NewInquiryForm() {
         </label>
       </div>
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-bold text-muted-on-card">메모 (DM 원문 등, 선택)</span>
+        <span className="text-xs font-bold text-muted-on-card">메모 (받은 자기소개글 등, 선택)</span>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}

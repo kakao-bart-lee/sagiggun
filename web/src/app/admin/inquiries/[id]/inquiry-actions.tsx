@@ -66,7 +66,7 @@ export function InquiryActions({
       return;
     }
     const queued = data.deliveryIds?.length ?? 0;
-    setMessage(queued ? `전달 큐에 ${queued}건을 추가했습니다.` : '처리했습니다.');
+    setMessage(queued ? `보낼 메시지에 ${queued}건을 담았습니다.` : '처리했습니다.');
     router.refresh();
   }
 
@@ -102,7 +102,7 @@ export function InquiryActions({
               disabled={!!busy}
               onClick={() => void act({ action: 'REQUEST_SPEC', body: specRequest }, 'request')}
             >
-              {busy === 'request' ? '큐잉 중…' : '스펙 문의 → 전달 큐'}
+              {busy === 'request' ? '담는 중…' : '스펙 문의 → 보낼 메시지'}
             </StampButton>
           </div>
         </div>
@@ -171,7 +171,7 @@ export function InquiryActions({
               disabled={!!busy}
               onClick={() => void act({ action: 'FORWARD', body: specForward }, 'forward')}
             >
-              {busy === 'forward' ? '큐잉 중…' : '스펙 전달 → 전달 큐'}
+              {busy === 'forward' ? '담는 중…' : '스펙 전달 → 보낼 메시지'}
             </StampButton>
           </div>
         </div>
@@ -181,7 +181,7 @@ export function InquiryActions({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <p className="text-xs font-bold text-muted-on-card">
-              ④ 후보가 OK하면 성사 — 양쪽에 서로의 핸들을 안내하는 문안 2건이 큐에 들어갑니다.
+              ④ 후보가 OK하면 성사 — 양쪽에 서로의 스레드 아이디를 안내하는 문안 2건이 큐에 들어갑니다.
             </p>
             <label className="text-[11px] font-bold text-muted-on-card">
               → 관심 보낸 @{inquiry.fromHandle}에게
@@ -217,7 +217,7 @@ export function InquiryActions({
                   )
                 }
               >
-                {busy === 'accept' ? '처리 중…' : '성사 → 안내 2건 큐잉'}
+                {busy === 'accept' ? '처리 중…' : '성사 → 안내 2건 담기'}
               </StampButton>
             </div>
           </div>
@@ -239,7 +239,7 @@ export function InquiryActions({
                 disabled={!!busy}
                 onClick={() => void act({ action: 'DECLINE', body: decline }, 'decline')}
               >
-                {busy === 'decline' ? '처리 중…' : '거절 → 안내 큐잉'}
+                {busy === 'decline' ? '처리 중…' : '거절 → 안내 담기'}
               </StampButton>
             </div>
           </div>

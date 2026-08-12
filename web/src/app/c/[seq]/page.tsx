@@ -35,7 +35,7 @@ export default async function CandidatePage({ params }: { params: Promise<{ seq:
       <section className="mt-6 rounded-[12px] border-2 border-edge bg-card p-6 text-on-card">
         <h2 className="mb-1 text-lg font-extrabold">이 분에게 관심 보내기 📨</h2>
         <p className="mb-4 text-xs leading-relaxed text-muted-on-card">
-          스레드 핸들을 남겨주시면 주인장이 DM으로 소개 양식을 보내드려요. 소개를 보내주시면
+          스레드 아이디를 남겨주시면 주인장이 DM으로 소개 양식을 보내드려요. 소개를 보내주시면
           상대분께 전달하고, 의향이 있으면 서로 연결해 드립니다.
         </p>
         <InterestForm targetSeq={profile.seq!} />

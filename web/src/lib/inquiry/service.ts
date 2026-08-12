@@ -286,7 +286,7 @@ export async function applyInquiryAction(
     });
 
   const inquiry = await find(id);
-  if (!inquiry) return { ok: false, status: 404, error: '없는 관심 문의입니다.' };
+  if (!inquiry) return { ok: false, status: 404, error: '없는 관심 건입니다.' };
   if (isTerminal(inquiry.status)) {
     return { ok: false, status: 409, error: '이미 종결된 문의입니다.' };
   }

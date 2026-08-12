@@ -43,7 +43,7 @@ function splitList(value: string): string[] {
 function serializeRawText(f: z.infer<typeof fields>): string {
   const appeals = [f.appeal1, f.appeal2, f.appeal3].filter(Boolean);
   return `[웹 신청] ${f.applicantType === 'SELF' ? '본인' : '친구 대신 신청'}
-스레드 핸들: @${normalizeHandle(f.handle)}
+스레드 아이디: @${normalizeHandle(f.handle)}
 
 🤍 본인 소개
 - 나이 / 성별 / 키: ${f.birthYear}년생 / ${f.gender === 'F' ? '여' : '남'} / ${f.heightCm}cm
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 
   const handle = normalizeHandle(f.handle);
   if (!handle) {
-    return NextResponse.json({ error: '스레드 핸들을 확인해 주세요.' }, { status: 400 });
+    return NextResponse.json({ error: '스레드 아이디를 확인해 주세요.' }, { status: 400 });
   }
 
   const idealType = [
