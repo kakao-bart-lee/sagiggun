@@ -87,7 +87,7 @@ export function InquiryActions({
       {status === 'RECEIVED' && (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-bold text-muted-on-card">
-            ① 관심 보낸 @{inquiry.fromHandle}에게 스펙 문의를 보냅니다. 문안을 다듬고 큐에 넣으세요.
+            ① 관심 보낸 @{inquiry.fromHandle}에게 스펙 문의를 보냅니다. 문안을 다듬어 「보낼 메시지」에 담으세요.
           </p>
           <textarea
             value={specRequest}
@@ -181,7 +181,7 @@ export function InquiryActions({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <p className="text-xs font-bold text-muted-on-card">
-              ④ 후보가 OK하면 성사 — 양쪽에 서로의 스레드 아이디를 안내하는 문안 2건이 큐에 들어갑니다.
+              ④ 후보가 OK하면 성사 — 양쪽에 서로의 스레드 아이디를 안내하는 문안 2건이 「보낼 메시지」에 담깁니다.
             </p>
             <label className="text-[11px] font-bold text-muted-on-card">
               → 관심 보낸 @{inquiry.fromHandle}에게

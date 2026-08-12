@@ -56,3 +56,15 @@ export const DELIVERY_KIND_LABEL: Record<string, string> = {
 export function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ');
 }
+
+/**
+ * 스레드 아이디 입력값이 항상 `@`로 시작하도록 맞춘다.
+ *
+ * 사용자가 `@`를 붙이든 안 붙이든 화면에는 `@minsu_92` 형태로 보이게 해서, 저장된 값과
+ * 스레드에서 보이는 표기가 어긋나지 않게 한다. 비어 있으면 빈 문자열로 두어 placeholder가
+ * 그대로 보이게 한다. 서버는 normalizeHandle()로 `@`를 다시 벗겨내므로 그대로 보내도 된다.
+ */
+export function withAtPrefix(value: string): string {
+  const body = value.replace(/^@+/, '').trimStart();
+  return body ? `@${body}` : '';
+}

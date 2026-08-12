@@ -58,20 +58,20 @@ export function LlmSettingsForm({ initial }: { initial: PublicLlmConfig }) {
 
   return (
     <form onSubmit={save} className="flex flex-col gap-6">
-      <div className="rounded-[8px] border-2 border-telop-blue/40 bg-telop-blue/10 p-4 text-sm text-fog">
+      <div className="rounded-[8px] border-2 border-telop-blue/40 bg-telop-blue/10 p-4 text-sm text-on-card">
         API 키는 화면이나 DB에 다시 표시하지 않고 Secret Manager에 저장합니다. 키를 입력하지
         않고 저장하면 기존 키를 유지합니다.
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="text-sm font-bold text-fog">
+        <label className="text-sm font-bold text-on-card">
           실행 모드
           <select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} className={fieldClass}>
             <option value="mock">mock — API 호출 안 함</option>
             <option value="live">live — 실제 API 호출</option>
           </select>
         </label>
-        <label className="text-sm font-bold text-fog">
+        <label className="text-sm font-bold text-on-card">
           Provider
           <select
             value={provider}
@@ -85,11 +85,11 @@ export function LlmSettingsForm({ initial }: { initial: PublicLlmConfig }) {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="text-sm font-bold text-fog">
+        <label className="text-sm font-bold text-on-card">
           모델
           <input value={model} onChange={(e) => setModel(e.target.value)} className={fieldClass} required />
         </label>
-        <label className="text-sm font-bold text-fog">
+        <label className="text-sm font-bold text-on-card">
           Reasoning
           <select
             value={reasoning}
@@ -104,11 +104,11 @@ export function LlmSettingsForm({ initial }: { initial: PublicLlmConfig }) {
       </div>
 
       <div className="border-t-2 border-edge pt-5">
-        <h2 className="text-lg font-extrabold text-fog">API 키</h2>
-        <p className="mt-1 text-xs text-fog-muted">
+        <h2 className="text-lg font-extrabold text-on-card">API 키</h2>
+        <p className="mt-1 text-xs text-muted-on-card">
           현재 provider: {configured ? '키 설정됨' : '키 미설정'}. 입력값은 저장 후 비워집니다.
         </p>
-        <label className="mt-4 block text-sm font-bold text-fog">
+        <label className="mt-4 block text-sm font-bold text-on-card">
           OpenAI API key
           <input
             type="password"
@@ -119,7 +119,7 @@ export function LlmSettingsForm({ initial }: { initial: PublicLlmConfig }) {
             placeholder={openaiConfigured ? '기존 키 유지' : 'sk-...'}
           />
         </label>
-        <label className="mt-3 flex items-center gap-2 text-xs font-normal text-fog-muted">
+        <label className="mt-3 flex items-center gap-2 text-xs font-normal text-muted-on-card">
           <input
             type="checkbox"
             checked={clearOpenaiApiKey}
@@ -128,7 +128,7 @@ export function LlmSettingsForm({ initial }: { initial: PublicLlmConfig }) {
           저장된 OpenAI 키 삭제
         </label>
 
-        <label className="mt-5 block text-sm font-bold text-fog">
+        <label className="mt-5 block text-sm font-bold text-on-card">
           Anthropic API key
           <input
             type="password"
@@ -139,7 +139,7 @@ export function LlmSettingsForm({ initial }: { initial: PublicLlmConfig }) {
             placeholder={anthropicConfigured ? '기존 키 유지' : 'sk-ant-...'}
           />
         </label>
-        <label className="mt-3 flex items-center gap-2 text-xs font-normal text-fog-muted">
+        <label className="mt-3 flex items-center gap-2 text-xs font-normal text-muted-on-card">
           <input
             type="checkbox"
             checked={clearAnthropicApiKey}

@@ -91,7 +91,9 @@ export async function createInquiry(
     });
 
   const fromHandle = normalizeHandle(input.fromHandle ?? '');
-  if (!fromHandle) return { ok: false, status: 400, error: '관심 보낸 분의 핸들이 필요합니다.' };
+  if (!fromHandle) {
+    return { ok: false, status: 400, error: '관심 보낸 분의 스레드 아이디가 필요합니다.' };
+  }
 
   const by =
     input.targetId != null

@@ -33,7 +33,11 @@ const stampTone = {
     'border-yellow bg-ink-elevated text-yellow shadow-[0_0_0_2px_var(--ink),0_0_0_4px_var(--yellow)] hover:bg-yellow hover:text-ink',
   red: 'border-telop-red bg-ink-elevated text-telop-red shadow-[0_0_0_2px_var(--ink),0_0_0_4px_var(--red)] hover:bg-telop-red hover:text-ink',
   blue: 'border-telop-blue bg-ink-elevated text-telop-blue shadow-[0_0_0_2px_var(--ink),0_0_0_4px_var(--blue)] hover:bg-telop-blue hover:text-ink',
-  ghost: 'border-edge bg-transparent text-fog hover:border-fog-muted hover:text-fog',
+  // ghost는 어두운 잉크 바닥과 밝은 종이 패널(bg-card) 양쪽에 쓰인다. 고정 색(text-fog)을
+  // 쓰면 패널 안에서 밝은 회색 위 밝은 회색이 되어 글씨가 사라진다(추출 저장·취소·거절 등).
+  // 주변 문맥의 색을 물려받게 해서 두 표면에서 모두 읽히게 한다 — 잉크 위에서는 fog,
+  // 패널 안에서는 on-card가 상속된다.
+  ghost: 'border-edge bg-transparent text-inherit hover:border-current',
 } as const;
 
 export function StampButton({

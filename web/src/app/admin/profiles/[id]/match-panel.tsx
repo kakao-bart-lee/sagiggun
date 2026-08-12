@@ -85,7 +85,7 @@ export function MatchPanel({ profileId }: { profileId: string }) {
   }
 
   return (
-    <section className="rounded-[12px] border-2 border-edge bg-card p-4">
+    <section className="rounded-[12px] border-2 border-edge bg-card p-4 text-on-card">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-muted-on-card">매칭 추천 (1→N)</h3>
         <StampButton
@@ -97,7 +97,7 @@ export function MatchPanel({ profileId }: { profileId: string }) {
           {busy === 'match' ? '추천 중…' : '매칭 추천 생성'}
         </StampButton>
       </div>
-      {message && <p className="mb-3 text-sm text-fog-muted">{message}</p>}
+      {message && <p className="mb-3 text-sm text-muted-on-card">{message}</p>}
       {!run ? (
         <p className="text-sm text-muted-on-card">아직 추천이 없습니다. APPROVED/PUBLISHED 풀에서 고릅니다.</p>
       ) : (
@@ -133,7 +133,7 @@ export function MatchPanel({ profileId }: { profileId: string }) {
                     disabled={!!busy}
                     onClick={() => void act(s.id, 'ACCEPT')}
                   >
-                    수락 → 큐
+                    수락 → 메시지 담기
                   </StampButton>
                   <StampButton
                     tone="ghost"
