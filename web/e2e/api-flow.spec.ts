@@ -60,7 +60,7 @@ test.describe.serial('API e2e — intake → LLM mock → match → delivery', (
     expect((await api.patch(`/api/deliveries/${firstId}`, { status: 'DONE' })).ok()).toBeTruthy();
   });
 
-  test('신규 프로필 extract→compose→approve→publish-mark (mock LLM)', async ({ request }) => {
+  test('신규 프로필 extract→compose→approve→publish (Threads 미연결이면 400)', async ({ request }) => {
     const api = ops(request);
     const handle = `e2e_${Date.now()}`;
     const rawText = [
@@ -90,10 +90,11 @@ test.describe.serial('API e2e — intake → LLM mock → match → delivery', (
     const approve = await api.post(`/api/profiles/${profile.id}/approve`);
     expect(approve.status(), await approve.text()).toBe(200);
 
-    const publish = await api.post(`/api/profiles/${profile.id}/publish-mark`);
-    expect(publish.status(), await publish.text()).toBe(200);
-    const published = await publish.json();
-    expect(published.profile.status).toBe('PUBLISHED');
-    expect(published.profile.seq).toBeGreaterThan(0);
+    // e2e 환경에는 Threads 연결(ThreadsAccount)이 없다 — OAuth는 실제 브라우저 왕복이 필요해
+    // 로컬/CI에서 재현할 수 없다(설계 문서 §3/§9). 연결이 없을 때 명확한 400을 주는지만 본다.
+    const publish = await api.post(`/api/profiles/${profile.id}/publish`);
+    expect(publish.status(), await publish.text()).toBe(400);
+    const body = await publish.json();
+    expect(body.error).toMatch(/연결/);
   });
 });
