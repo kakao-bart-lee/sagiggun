@@ -1931,7 +1931,7 @@ Run: `pnpm --dir web infra:up && pnpm --dir web db:migrate && pnpm --dir web dev
   요구해 배포 환경(또는 터널)에서만 연결을 완료할 수 있습니다.
 ```
 
-"## 사용법" 다음, "## 관심 문의 (인바운드 매칭)" 앞에 새 절을 추가:
+"## 사용 흐름" 다음, "## 관심 문의 (인바운드 매칭)" 앞에 새 절을 추가:
 
 ```markdown
 ## Threads API 연동 (최초 1회)
