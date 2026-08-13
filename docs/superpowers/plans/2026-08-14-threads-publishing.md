@@ -506,10 +506,15 @@ describe('exchangeCodeForToken', () => {
   });
 
   it('실패하면 Threads의 error_message를 담아 ThreadsApiError를 던진다', async () => {
-    fetchMock.mockResolvedValue(
-      jsonResponse(
-        { error_type: 'OAuthException', code: 400, error_message: '이미 사용된 코드입니다.' },
-        400
+    // mockResolvedValue는 Response 인스턴스를 한 번만 만들어 매 호출에 재사용하는데, Response
+    // body는 한 번만 읽을 수 있다. 아래에서 exchangeCodeForToken을 두 번 호출하므로
+    // mockImplementation으로 매 호출마다 새 Response를 만들어야 두 번째 호출도 body를 읽을 수 있다.
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        jsonResponse(
+          { error_type: 'OAuthException', code: 400, error_message: '이미 사용된 코드입니다.' },
+          400
+        )
       )
     );
     await expect(
