@@ -102,6 +102,22 @@ git commit -m "feat: ThreadsAccount 모델 추가"
     expect(env.threadsAppSecret).toBe('secret123');
     expect(env.threadsRedirectUri).toBe('https://example.com/api/admin/threads/callback');
   });
+
+  // .env.example의 THREADS_APP_ID= 처럼 "키는 있지만 값이 빈 문자열"인 경우를 반드시
+  // null로 취급해야 한다. min(1)만 걸면 빈 문자열이 optional()을 우회하지 못하고 그대로
+  // getEnv() 전체를 던지게 만든다 — cp .env.example .env로 시작한 모든 로컬 개발이 즉시
+  // 깨진다(기존 GCP_PROJECT_ID가 이미 이 함정에 빠져 있었다: 로컬에서 재현 확인함).
+  it('THREADS_*가 빈 문자열이어도(.env.example 그대로) 예외 없이 null이다', () => {
+    const env = getEnv({
+      ...full,
+      THREADS_APP_ID: '',
+      THREADS_APP_SECRET: '',
+      THREADS_REDIRECT_URI: '',
+    });
+    expect(env.threadsAppId).toBeNull();
+    expect(env.threadsAppSecret).toBeNull();
+    expect(env.threadsRedirectUri).toBeNull();
+  });
 ```
 
 - [ ] **Step 2: 테스트 실행해 실패 확인**
@@ -111,13 +127,22 @@ Expected: FAIL — `threadsAppId`/`threadsAppSecret`/`threadsRedirectUri`가 `En
 
 - [ ] **Step 3: 구현**
 
-`web/src/lib/env.ts`의 `schema` 객체(`PHOTO_BUCKET` 다음)에 추가:
+`web/src/lib/env.ts`의 `schema` 객체(`PHOTO_BUCKET` 다음)에 추가. `LLM_MODEL`과 똑같이 빈 문자열을 `undefined`로 먼저 걸러낸다 — 그냥 `z.string().trim().min(1).optional()`만 쓰면 "키는 있지만 값이 빈 문자열"(`.env.example`을 그대로 복사한 `.env`가 정확히 이 모양이다)일 때 `.optional()`을 타지 않고 `.min(1)`에서 걸려 `getEnv()` 전체가 예외를 던진다:
 
 ```ts
   // Threads Publishing API. 셋 다 없으면 연결 기능이 비활성(503).
-  THREADS_APP_ID: z.string().trim().min(1).optional(),
-  THREADS_APP_SECRET: z.string().trim().min(1).optional(),
-  THREADS_REDIRECT_URI: z.string().trim().min(1).optional(),
+  THREADS_APP_ID: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().min(1).optional()
+  ),
+  THREADS_APP_SECRET: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().min(1).optional()
+  ),
+  THREADS_REDIRECT_URI: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().min(1).optional()
+  ),
 ```
 
 `Env` 타입(`photoBucket: string | null;` 다음)에 추가:
@@ -1311,7 +1336,7 @@ git commit -m "feat: publish-mark를 실제 Threads 게시 라우트로 대체"
 
 **Interfaces:**
 - Consumes: Task 2의 `getEnv()`(`threadsAppId`/`threadsRedirectUri`), Task 3의 `getThreadsAccount`/`clearThreadsAccount`, Task 4의 `buildAuthorizeUrl`.
-- Produces: `THREADS_OAUTH_STATE_COOKIE: string` 상수 — Task 9의 콜백 라우트가 같은 상수를 가져다 쓴다. `GET /api/admin/threads/connect`, `GET /api/admin/threads/status`, `POST /api/admin/threads/disconnect` — Task 10의 설정 화면이 호출한다.
+- Produces: `THREADS_OAUTH_STATE_COOKIE: string` 상수 — Task 9의 콜백 라우트가 같은 상수를 가져다 쓴다. `GET /api/admin/threads/connect`(Task 10의 "Threads 연결" 버튼이 브라우저 이동으로 호출), `POST /api/admin/threads/disconnect`(Task 10의 "연결 해제" 버튼이 호출). `GET /api/admin/threads/status`는 `GET /api/admin/llm-settings`와 같은 성격의 일반 조회 라우트다 — Task 10의 설정 페이지는 이 라우트를 거치지 않고 `getThreadsAccount()`를 서버 컴포넌트에서 직접 호출한다(기존 `page.tsx`가 `getLlmConfig()`를 직접 호출하는 것과 동일한 패턴이며, 페이지 자체 렌더링에 라우트 왕복이 필요 없다). `status` 라우트는 Bearer 토큰을 쓰는 외부 클라이언트(확장 프로그램 등)를 위한 조회 창구로 남긴다.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
