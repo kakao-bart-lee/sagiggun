@@ -5,6 +5,7 @@ import {
   exchangeForLongLivedToken,
   refreshLongLivedToken,
   fetchThreadsUsername,
+  publishThreadsPost,
   ThreadsApiError,
 } from '@/lib/threads/client';
 
@@ -139,5 +140,62 @@ describe('fetchThreadsUsername', () => {
   it('username이 없으면 null', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ id: '17841405793187218' }));
     expect(await fetchThreadsUsername({ accessToken: 'long-token' })).toBeNull();
+  });
+});
+
+describe('publishThreadsPost', () => {
+  const fetchMock = vi.fn();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  it('container 생성 후 즉시 publish가 성공하면 post id를 돌려준다', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id: 'container-1' })) // POST /threads
+      .mockResolvedValueOnce(jsonResponse({ id: 'post-1' })); // POST /threads_publish
+
+    const postId = await publishThreadsPost({
+      accessToken: 'token',
+      threadsUserId: 'u1',
+      text: '✨ 본문',
+    });
+
+    expect(postId).toBe('post-1');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toBe('https://graph.threads.net/v1.0/u1/threads');
+    expect(String(fetchMock.mock.calls[1][0])).toBe(
+      'https://graph.threads.net/v1.0/u1/threads_publish'
+    );
+  });
+
+  it('publish가 아직 준비 안 됐으면(IN_PROGRESS) 상태를 확인하고 재시도한다', async () => {
+    vi.useFakeTimers();
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id: 'container-1' })) // container 생성
+      .mockResolvedValueOnce(jsonResponse({ error: { message: '아직 처리 중' } }, 400)) // 1차 publish 실패
+      .mockResolvedValueOnce(jsonResponse({ status: 'IN_PROGRESS', id: 'container-1' })) // 상태 확인
+      .mockResolvedValueOnce(jsonResponse({ id: 'post-1' })); // 2차 publish 성공
+
+    const promise = publishThreadsPost({ accessToken: 'token', threadsUserId: 'u1', text: '✨ 본문' });
+    await vi.advanceTimersByTimeAsync(3_000);
+    const postId = await promise;
+
+    expect(postId).toBe('post-1');
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    vi.useRealTimers();
+  });
+
+  it('container 상태가 ERROR면 그 error_message로 ThreadsApiError를 던진다', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id: 'container-1' }))
+      .mockResolvedValueOnce(jsonResponse({ error: { message: '실패' } }, 400))
+      .mockResolvedValueOnce(
+        jsonResponse({ status: 'ERROR', id: 'container-1', error_message: 'FAILED_PROCESSING' })
+      );
+
+    await expect(
+      publishThreadsPost({ accessToken: 'token', threadsUserId: 'u1', text: '✨ 본문' })
+    ).rejects.toThrow('FAILED_PROCESSING');
   });
 });

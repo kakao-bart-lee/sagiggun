@@ -93,3 +93,88 @@ export async function fetchThreadsUsername(args: { accessToken: string }): Promi
   const data = await getJson(url.toString());
   return typeof data.username === 'string' ? data.username : null;
 }
+
+// container→publish 사이 공식 권장 대기(30초)는 텍스트 전용에는 과하다 — 미디어 다운로드가
+// 없어 대개 즉시 끝난다. 그래서 먼저 즉시 publish를 시도하고, 실패했을 때만 상태를 확인해
+// 짧게 재시도한다. 폴링 간격·횟수는 troubleshooting 문서의 상태값(IN_PROGRESS/ERROR/EXPIRED/
+// FINISHED/PUBLISHED)을 그대로 따른다.
+const PUBLISH_POLL_DELAY_MS = 3_000;
+const MAX_PUBLISH_ATTEMPTS = 3;
+
+async function postForm(url: string, body: Record<string, string>): Promise<Record<string, unknown>> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(body).toString(),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  return parseJsonOrThrow(response);
+}
+
+async function createTextContainer(args: {
+  accessToken: string;
+  threadsUserId: string;
+  text: string;
+}): Promise<string> {
+  const data = await postForm(`https://graph.threads.net/v1.0/${args.threadsUserId}/threads`, {
+    media_type: 'TEXT',
+    text: args.text,
+    access_token: args.accessToken,
+  });
+  return String(data.id);
+}
+
+async function tryPublish(args: {
+  accessToken: string;
+  threadsUserId: string;
+  creationId: string;
+}): Promise<string | null> {
+  try {
+    const data = await postForm(
+      `https://graph.threads.net/v1.0/${args.threadsUserId}/threads_publish`,
+      { creation_id: args.creationId, access_token: args.accessToken }
+    );
+    return String(data.id);
+  } catch (error) {
+    if (error instanceof ThreadsApiError) return null;
+    throw error;
+  }
+}
+
+async function containerStatus(args: {
+  accessToken: string;
+  creationId: string;
+}): Promise<{ status: string; errorMessage: string | null }> {
+  const url = new URL(`https://graph.threads.net/v1.0/${args.creationId}`);
+  url.searchParams.set('fields', 'status,error_message');
+  url.searchParams.set('access_token', args.accessToken);
+  const data = await getJson(url.toString());
+  return {
+    status: String(data.status ?? ''),
+    errorMessage: typeof data.error_message === 'string' ? data.error_message : null,
+  };
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function publishThreadsPost(args: {
+  accessToken: string;
+  threadsUserId: string;
+  text: string;
+}): Promise<string> {
+  const creationId = await createTextContainer(args);
+
+  for (let attempt = 1; attempt <= MAX_PUBLISH_ATTEMPTS; attempt += 1) {
+    const postId = await tryPublish({ ...args, creationId });
+    if (postId) return postId;
+
+    const status = await containerStatus({ accessToken: args.accessToken, creationId });
+    if (status.status === 'ERROR' || status.status === 'EXPIRED') {
+      throw new ThreadsApiError(status.errorMessage ?? 'Threads 게시에 실패했습니다.');
+    }
+    if (attempt < MAX_PUBLISH_ATTEMPTS) await delay(PUBLISH_POLL_DELAY_MS);
+  }
+  throw new ThreadsApiError('Threads 게시가 시간 내에 완료되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+}
