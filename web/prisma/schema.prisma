@@ -196,3 +196,15 @@ model Inquiry {
   @@index([fromHandle])
   @@index([status])
 }
+
+// Threads Publishing API 연결 정보. 운영자가 한 명이라 항상 id="singleton" 행 하나만 존재한다.
+model ThreadsAccount {
+  id             String   @id @default("singleton")
+  threadsUserId  String
+  username       String?
+  accessToken    String   @db.Text
+  tokenExpiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
