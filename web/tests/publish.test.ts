@@ -25,6 +25,7 @@ function fakeProfile(partial: Partial<Profile> & { id: string; status: Status })
     finalBody: '✨ 본문',
     publishedPostId: null,
     publishedAt: null,
+    publishStartedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...partial,
@@ -43,10 +44,12 @@ function fakeAccount(partial: Partial<ThreadsAccountInfo> = {}): ThreadsAccountI
 
 describe('publishToThreads', () => {
   it('APPROVED이면 게시하고 PUBLISHED로 올려 seq·postId를 남긴다', async () => {
+    const releaseClaim = vi.fn(async () => {});
     const result = await publishToThreads('p1', {
       find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
       getAccount: async () => fakeAccount(),
       ensureFreshToken: async () => 'fresh-token',
+      claim: async () => true,
       publishText: async () => 'post-123',
       commit: async () =>
         fakeProfile({
@@ -57,6 +60,7 @@ describe('publishToThreads', () => {
           publishedAt: new Date(),
           publishedPostId: 'post-123',
         }),
+      releaseClaim,
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -64,6 +68,7 @@ describe('publishToThreads', () => {
       expect(result.profile.seq).toBe(7);
       expect(result.profile.publishedPostId).toBe('post-123');
     }
+    expect(releaseClaim).not.toHaveBeenCalled();
   });
 
   it('승인 전이면 400이고 Threads를 호출하지 않는다', async () => {
@@ -115,6 +120,7 @@ describe('publishToThreads', () => {
       find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
       getAccount: async () => fakeAccount(),
       ensureFreshToken: async () => 'fresh-token',
+      claim: async () => true,
       publishText: async () => {
         throw new ThreadsApiError('일일 게시 한도를 초과했습니다.');
       },
@@ -131,6 +137,7 @@ describe('publishToThreads', () => {
       find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
       getAccount: async () => fakeAccount(),
       ensureFreshToken: async () => 'fresh-token',
+      claim: async () => true,
       publishText: async () => 'post-999',
       commit: async () => null,
     });
@@ -138,6 +145,91 @@ describe('publishToThreads', () => {
     if (!result.ok) {
       expect(result.status).toBe(409);
       expect(result.error).toMatch(/post-999/);
+    }
+  });
+
+  it('선점 실패면 409이고 Threads를 호출하지 않는다', async () => {
+    const publishText = vi.fn();
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => 'fresh-token',
+      claim: async () => false,
+      publishText,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(409);
+      expect(result.error).toMatch(/진행 중/);
+    }
+    expect(publishText).not.toHaveBeenCalled();
+  });
+
+  it('게시 실패면 선점을 해제한다', async () => {
+    const releaseClaim = vi.fn(async () => {});
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => 'fresh-token',
+      claim: async () => true,
+      publishText: async () => {
+        throw new ThreadsApiError('일일 게시 한도를 초과했습니다.');
+      },
+      releaseClaim,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(502);
+    expect(releaseClaim).toHaveBeenCalledWith('p1');
+  });
+
+  it('게시 성공 후 commit이 throw하면 409 + post id를 담고, 선점은 풀지 않는다', async () => {
+    const releaseClaim = vi.fn(async () => {});
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => 'fresh-token',
+      claim: async () => true,
+      publishText: async () => 'post-777',
+      commit: async () => {
+        throw new Error('db down');
+      },
+      releaseClaim,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(409);
+      expect(result.error).toMatch(/post-777/);
+    }
+    expect(releaseClaim).not.toHaveBeenCalled();
+  });
+
+  it('staleBefore가 현재보다 5분 전으로 계산된다', async () => {
+    const now = new Date('2026-08-14T00:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      const claim = vi.fn(async () => true);
+      await publishToThreads('p1', {
+        find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+        getAccount: async () => fakeAccount(),
+        ensureFreshToken: async () => 'fresh-token',
+        claim,
+        publishText: async () => 'post-123',
+        commit: async () =>
+          fakeProfile({
+            id: 'p1',
+            status: 'PUBLISHED',
+            seq: 7,
+            finalBody: '✨ 본문',
+            publishedAt: new Date(),
+            publishedPostId: 'post-123',
+          }),
+      });
+      expect(claim).toHaveBeenCalledWith(
+        expect.objectContaining({ staleBefore: new Date(now.getTime() - 5 * 60 * 1000) })
+      );
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

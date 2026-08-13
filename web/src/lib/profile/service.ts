@@ -66,6 +66,13 @@ export type PublishDeps = {
   find?: (id: string) => Promise<{ id: string; status: Status; finalBody: string | null } | null>;
   getAccount?: () => Promise<ThreadsAccountInfo | null>;
   ensureFreshToken?: (account: ThreadsAccountInfo) => Promise<string>;
+  claim?: (args: {
+    id: string;
+    expectedStatus: Status;
+    expectedFinalBody: string | null;
+    staleBefore: Date;
+  }) => Promise<boolean>;
+  releaseClaim?: (id: string) => Promise<void>;
   publishText?: (args: { accessToken: string; threadsUserId: string; text: string }) => Promise<string>;
   beforeWrite?: () => void | Promise<void>;
   commit?: (args: {
@@ -80,6 +87,11 @@ export type PublishDeps = {
 // 토큰으로 계속 진행한다 — Threads 장기 토큰은 "만료 전"에만 갱신 가능하므로, 이미 만료된
 // 경우에만 진짜 에러로 취급한다.
 const REFRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+// 선점이 이보다 오래됐으면 죽은 프로세스가 남긴 것으로 보고 재선점을 허용한다.
+// publishThreadsPost의 요청당 타임아웃(10초) × 최대 7회 + 재시도 대기(3초 × 2)로 살아 있는
+// 요청의 상한이 약 90초라, 이 시간까지 버티는 요청은 존재할 수 없다(3배 이상 여유).
+const PUBLISH_CLAIM_STALE_MS = 5 * 60 * 1000;
 
 async function defaultEnsureFreshToken(account: ThreadsAccountInfo): Promise<string> {
   const now = Date.now();
@@ -135,6 +147,46 @@ export async function publishToThreads(id: string, deps: PublishDeps = {}): Prom
     return { ok: false, status: 400, error: 'Threads 연결이 만료됐습니다. 설정에서 다시 연결해 주세요.' };
   }
 
+  const claim =
+    deps.claim ??
+    (async ({ id: profileId, expectedStatus, expectedFinalBody, staleBefore }) => {
+      const { prisma } = await import('@/lib/prisma');
+      const result = await prisma.profile.updateMany({
+        where: {
+          id: profileId,
+          status: expectedStatus,
+          finalBody: expectedFinalBody,
+          OR: [{ publishStartedAt: null }, { publishStartedAt: { lt: staleBefore } }],
+        },
+        data: { publishStartedAt: new Date() },
+      });
+      return result.count === 1;
+    });
+
+  const releaseClaim =
+    deps.releaseClaim ??
+    (async (profileId: string) => {
+      const { prisma } = await import('@/lib/prisma');
+      await prisma.profile.updateMany({
+        where: { id: profileId },
+        data: { publishStartedAt: null },
+      });
+    });
+
+  const claimed = await claim({
+    id,
+    expectedStatus: profile.status,
+    expectedFinalBody: profile.finalBody,
+    staleBefore: new Date(Date.now() - PUBLISH_CLAIM_STALE_MS),
+  });
+  if (!claimed) {
+    return {
+      ok: false,
+      status: 409,
+      error: '이미 게시가 진행 중입니다. 잠시 후 새로고침해 결과를 확인해 주세요.',
+    };
+  }
+
   const publishText = deps.publishText ?? publishThreadsPost;
   let publishedPostId: string;
   try {
@@ -144,6 +196,12 @@ export async function publishToThreads(id: string, deps: PublishDeps = {}): Prom
       text: profile.finalBody ?? '',
     });
   } catch (error) {
+    // 게시 전 실패다 — 외부에 아무 일도 안 일어났으니 선점을 풀어 바로 재시도할 수 있게 한다.
+    try {
+      await releaseClaim(id);
+    } catch (releaseError) {
+      console.warn('[threads] 게시 실패 후 선점 해제 실패', releaseError);
+    }
     const message = error instanceof ThreadsApiError ? error.message : 'Threads 게시에 실패했습니다.';
     return { ok: false, status: 502, error: message };
   }
@@ -154,24 +212,52 @@ export async function publishToThreads(id: string, deps: PublishDeps = {}): Prom
     deps.commit ??
     (async ({ id: profileId, expectedStatus, expectedFinalBody, publishedPostId: postId }) => {
       const { prisma } = await import('@/lib/prisma');
-      return prisma.$transaction(async (tx) => {
-        const max = await tx.profile.aggregate({ _max: { seq: true } });
-        const nextSeq = (max._max.seq ?? 0) + 1;
-        const result = await tx.profile.updateMany({
-          where: { id: profileId, status: expectedStatus, finalBody: expectedFinalBody },
-          data: { status: 'PUBLISHED', publishedAt: new Date(), seq: nextSeq, publishedPostId: postId },
-        });
-        if (result.count === 0) return null;
-        return tx.profile.findUniqueOrThrow({ where: { id: profileId } });
-      });
+      // seq는 @unique인데 max+1로 뽑으므로 동시에 두 건이 게시되면 같은 값을 노려 P2002가 난다.
+      // 이 시점에는 Threads에 이미 글이 올라간 뒤라 그냥 던지면 "게시됐는데 기록 없음"이 되므로,
+      // 충돌만 짧게 재시도한다.
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          return await prisma.$transaction(async (tx) => {
+            const max = await tx.profile.aggregate({ _max: { seq: true } });
+            const nextSeq = (max._max.seq ?? 0) + 1;
+            const result = await tx.profile.updateMany({
+              where: { id: profileId, status: expectedStatus, finalBody: expectedFinalBody },
+              data: {
+                status: 'PUBLISHED',
+                publishedAt: new Date(),
+                seq: nextSeq,
+                publishedPostId: postId,
+                publishStartedAt: null,
+              },
+            });
+            if (result.count === 0) return null;
+            return tx.profile.findUniqueOrThrow({ where: { id: profileId } });
+          });
+        } catch (error) {
+          const code = (error as { code?: string }).code;
+          if (code !== 'P2002' || attempt >= 3) throw error;
+        }
+      }
     });
 
-  const updated = await commit({
-    id,
-    expectedStatus: profile.status,
-    expectedFinalBody: profile.finalBody,
-    publishedPostId,
-  });
+  let updated: Profile | null;
+  try {
+    updated = await commit({
+      id,
+      expectedStatus: profile.status,
+      expectedFinalBody: profile.finalBody,
+      publishedPostId,
+    });
+  } catch (error) {
+    // Threads에는 이미 올라갔고 DB 반영만 실패했다. 선점을 일부러 풀지 않는다 — 바로 다시
+    // 누르면 중복 게시가 되므로, 운영자가 Threads를 확인할 시간(PUBLISH_CLAIM_STALE_MS)을 둔다.
+    console.error('[threads] 게시 성공 후 DB 반영 실패(예외)', { id, publishedPostId, error });
+    return {
+      ok: false,
+      status: 409,
+      error: `게시는 완료됐지만(Threads post id: ${publishedPostId}) DB 반영에 실패했습니다. Threads에서 확인한 뒤 처리해 주세요.`,
+    };
+  }
   if (!updated) {
     console.error('[threads] 게시 성공 후 DB 반영 실패', { id, publishedPostId });
     return {

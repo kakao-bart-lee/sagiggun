@@ -82,6 +82,9 @@ model Profile {
   // 게시 (서브시스템 3)
   publishedPostId String?
   publishedAt     DateTime?
+  // Threads 게시 선점(claim). 게시가 진행되는 동안만 non-null — 겹친 요청이 같은 프로필을
+  // 두 번 게시하는 것을 막는다. 죽은 프로세스가 남긴 값은 PUBLISH_CLAIM_STALE_MS 후 무시된다.
+  publishStartedAt DateTime?
 
   photos Photo[]
 
