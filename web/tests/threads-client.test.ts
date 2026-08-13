@@ -167,6 +167,20 @@ describe('publishThreadsPost', () => {
     expect(String(fetchMock.mock.calls[1][0])).toBe(
       'https://graph.threads.net/v1.0/u1/threads_publish'
     );
+
+    const containerInit = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(containerInit.headers).toMatchObject({
+      'Content-Type': 'application/x-www-form-urlencoded',
+    });
+    expect(String(containerInit.body)).toContain('media_type=TEXT');
+    // '✨ 본문'을 URLSearchParams로 인코딩한 결과 — createTextContainer가 text를 폼 바디에
+    // 실제로 실어 보내는지 확인한다.
+    expect(String(containerInit.body)).toContain('text=%E2%9C%A8+%EB%B3%B8%EB%AC%B8');
+
+    const publishInit = fetchMock.mock.calls[1][1] as RequestInit;
+    // container 생성 응답이 돌려준 id('container-1')가 그대로 publish 요청의 creation_id로
+    // 전달되는지 확인 — 2단계 흐름의 핵심 연결고리.
+    expect(String(publishInit.body)).toContain('creation_id=container-1');
   });
 
   it('publish가 아직 준비 안 됐으면(IN_PROGRESS) 상태를 확인하고 재시도한다', async () => {
@@ -197,5 +211,31 @@ describe('publishThreadsPost', () => {
     await expect(
       publishThreadsPost({ accessToken: 'token', threadsUserId: 'u1', text: '✨ 본문' })
     ).rejects.toThrow('FAILED_PROCESSING');
+  });
+
+  it('IN_PROGRESS가 반복되어 최대 시도 횟수를 넘기면 타임아웃 에러를 던진다', async () => {
+    vi.useFakeTimers();
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id: 'container-1' })) // container 생성
+      .mockResolvedValueOnce(jsonResponse({ error: { message: '아직 처리 중' } }, 400)) // 1차 publish 실패
+      .mockResolvedValueOnce(jsonResponse({ status: 'IN_PROGRESS', id: 'container-1' })) // 1차 상태 확인
+      .mockResolvedValueOnce(jsonResponse({ error: { message: '아직 처리 중' } }, 400)) // 2차 publish 실패
+      .mockResolvedValueOnce(jsonResponse({ status: 'IN_PROGRESS', id: 'container-1' })) // 2차 상태 확인
+      .mockResolvedValueOnce(jsonResponse({ error: { message: '아직 처리 중' } }, 400)) // 3차 publish 실패
+      .mockResolvedValueOnce(jsonResponse({ status: 'IN_PROGRESS', id: 'container-1' })); // 3차 상태 확인
+
+    const promise = publishThreadsPost({ accessToken: 'token', threadsUserId: 'u1', text: '✨ 본문' });
+    // reject 핸들러를 타이머 진행 전에 미리 붙여둔다 — 그렇지 않으면 3차 시도 직후(두 번째
+    // advanceTimersByTimeAsync 안에서) promise가 먼저 reject되고 나중에 핸들러가 붙어
+    // "unhandled rejection"으로 잡혀 테스트가 오탐 실패한다.
+    const assertion = expect(promise).rejects.toThrow(
+      'Threads 게시가 시간 내에 완료되지 않았습니다. 잠시 후 다시 시도해 주세요.'
+    );
+    await vi.advanceTimersByTimeAsync(3_000); // 1차 시도 후 대기
+    await vi.advanceTimersByTimeAsync(3_000); // 2차 시도 후 대기 (3차 시도 후에는 대기가 없다)
+    await assertion;
+    // container 생성 1회 + (publish 시도 + 상태 확인) × 3회 = 7회
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+    vi.useRealTimers();
   });
 });
