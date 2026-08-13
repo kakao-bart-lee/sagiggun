@@ -1511,7 +1511,7 @@ export async function POST() {
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `pnpm --dir web test threads-settings-routes.test.ts`
-Expected: PASS (4 tests)
+Expected: PASS (5 tests)
 
 - [ ] **Step 5: 커밋**
 
