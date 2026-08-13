@@ -128,15 +128,15 @@ async function tryPublish(args: {
   accessToken: string;
   threadsUserId: string;
   creationId: string;
-}): Promise<string | null> {
+}): Promise<{ postId: string } | { error: ThreadsApiError }> {
   try {
     const data = await postForm(
       `https://graph.threads.net/v1.0/${args.threadsUserId}/threads_publish`,
       { creation_id: args.creationId, access_token: args.accessToken }
     );
-    return String(data.id);
+    return { postId: String(data.id) };
   } catch (error) {
-    if (error instanceof ThreadsApiError) return null;
+    if (error instanceof ThreadsApiError) return { error };
     throw error;
   }
 }
@@ -167,12 +167,18 @@ export async function publishThreadsPost(args: {
   const creationId = await createTextContainer(args);
 
   for (let attempt = 1; attempt <= MAX_PUBLISH_ATTEMPTS; attempt += 1) {
-    const postId = await tryPublish({ ...args, creationId });
-    if (postId) return postId;
+    const result = await tryPublish({ ...args, creationId });
+    if ('postId' in result) return result.postId;
 
     const status = await containerStatus({ accessToken: args.accessToken, creationId });
     if (status.status === 'ERROR' || status.status === 'EXPIRED') {
       throw new ThreadsApiError(status.errorMessage ?? 'Threads 게시에 실패했습니다.');
+    }
+    if (status.status !== 'IN_PROGRESS') {
+      // container 자체는 문제없이 처리됐는데(예: FINISHED) publish 호출만 별도 이유로
+      // 거절된 경우 — 예: 하루 250건 게시 한도 초과. 재시도해 봐도 같은 이유로 계속
+      // 거절될 뿐이니, 방금 잡은 Threads의 실제 에러를 그대로 던진다.
+      throw result.error;
     }
     if (attempt < MAX_PUBLISH_ATTEMPTS) await delay(PUBLISH_POLL_DELAY_MS);
   }

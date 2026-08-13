@@ -213,6 +213,34 @@ describe('publishThreadsPost', () => {
     ).rejects.toThrow('FAILED_PROCESSING');
   });
 
+  it('publish 자체가 거절되고 container는 FINISHED면(예: 250건 초과) 재시도 없이 그 error_message로 즉시 던진다', async () => {
+    // container 처리 자체는 정상 끝났는데(FINISHED) publish 호출만 별도 이유로 거절된 경우 —
+    // 예: 하루 250건 게시 한도 초과. containerStatus에는 error_message가 없으므로(§8: 컨테이너는
+    // 문제없이 처리됐다), publish 단계에서 잡은 진짜 에러를 그대로 던져야 한다. 재시도로 넘어가
+    // 남은 시도를 낭비하고 그 에러를 잃어버리면 안 된다. 아래는 (수정 전 버그가 있는 코드라면)
+    // 3번 다 재시도해서 소진할 만큼 응답을 채워 둔다 — 고쳐지면 1차 시도 후 곧바로 던지므로
+    // 뒤의 응답들은 쓰이지 않아야 한다.
+    vi.useFakeTimers();
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id: 'container-1' })) // container 생성
+      .mockResolvedValueOnce(jsonResponse({ error_message: '일일 게시 한도를 초과했습니다.' }, 400)) // 1차 publish 거절
+      .mockResolvedValueOnce(jsonResponse({ status: 'FINISHED', id: 'container-1' })) // 1차 상태 확인 — container는 정상
+      .mockResolvedValueOnce(jsonResponse({ error_message: '일일 게시 한도를 초과했습니다.' }, 400)) // 2차 publish 거절
+      .mockResolvedValueOnce(jsonResponse({ status: 'FINISHED', id: 'container-1' })) // 2차 상태 확인
+      .mockResolvedValueOnce(jsonResponse({ error_message: '일일 게시 한도를 초과했습니다.' }, 400)) // 3차 publish 거절
+      .mockResolvedValueOnce(jsonResponse({ status: 'FINISHED', id: 'container-1' })); // 3차 상태 확인
+
+    const promise = publishThreadsPost({ accessToken: 'token', threadsUserId: 'u1', text: '✨ 본문' });
+    const assertion = expect(promise).rejects.toThrow('일일 게시 한도를 초과했습니다.');
+    await vi.advanceTimersByTimeAsync(3_000);
+    await vi.advanceTimersByTimeAsync(3_000);
+    await assertion;
+    // container 생성 1회 + publish 시도 1회 + 상태 확인 1회 = 3회 — 3회 재시도를 전부 태우지
+    // 않았음을 증명(재시도했다면 최대 7회까지 호출됐을 것).
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
+  });
+
   it('IN_PROGRESS가 반복되어 최대 시도 횟수를 넘기면 타임아웃 에러를 던진다', async () => {
     vi.useFakeTimers();
     fetchMock

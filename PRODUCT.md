@@ -34,7 +34,7 @@ Confirmed today:
 - Profile intake with duplicate-handle warning (does not block save).
 - Photo upload to filesystem volume; served only through authenticated routes.
 - LLM extract (structured fields, no guessing) and compose (fields + photos → draft body starting with ✨, no post number in body).
-- Status machine: COLLECTED → DRAFTED → APPROVED → PUBLISHED (manual publish + seq issue via publish-mark); edit after approve returns to DRAFTED; ARCHIVED exists in the model with limited/no UI.
+- Status machine: COLLECTED → DRAFTED → APPROVED → PUBLISHED (publish + seq issue via the real Threads Publishing API, `/api/profiles/[id]/publish`); edit after approve returns to DRAFTED; ARCHIVED exists in the model with limited/no UI.
 - Delete removes DB row and photo files together.
 - Inbound interest (Inquiry) pipeline: RECEIVED → SPEC_REQUESTED → SPEC_RECEIVED → FORWARDED → ACCEPTED/DECLINED/CLOSED, driving typed delivery-queue drafts (spec request / spec forward / connect); extension can file interest from a DM and auto-attach collected replies.
 - Public, unauthenticated surfaces: anonymous published-profile listing (`/`), per-number detail with interest form (`/c/[seq]`), structured application form (`/apply`, min 2 photos, adult + privacy consent, rate-limited). Handles and photos are never exposed publicly.

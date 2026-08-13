@@ -173,6 +173,7 @@ export async function publishToThreads(id: string, deps: PublishDeps = {}): Prom
     publishedPostId,
   });
   if (!updated) {
+    console.error('[threads] 게시 성공 후 DB 반영 실패', { id, publishedPostId });
     return {
       ok: false,
       status: 409,
