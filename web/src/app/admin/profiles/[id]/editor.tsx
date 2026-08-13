@@ -417,13 +417,13 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             tone="blue"
             disabled={!!busy}
             onClick={() => {
-              if (!confirm('손으로 게시한 뒤 상태를 게시됨으로 표시할까요? (Threads API 없음)')) {
+              if (!confirm('Threads에 바로 게시할까요? 게시 후에는 취소할 수 없습니다.')) {
                 return;
               }
-              return call(`/api/profiles/${profile.id}/publish-mark`, { method: 'POST' }, 'publish');
+              return call(`/api/profiles/${profile.id}/publish`, { method: 'POST' }, 'publish');
             }}
           >
-            {busy === 'publish' ? '표시 중…' : '게시됨으로 표시'}
+            {busy === 'publish' ? '게시 중…' : 'API로 게시'}
           </StampButton>
         )}
 

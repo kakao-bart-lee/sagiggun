@@ -24,12 +24,23 @@ pnpm dev
 3. **문구 작성** — 추출 항목과 사진을 함께 넣어 게시 문구 초안을 만듭니다.
 4. **검수** — 초안을 읽고 고칩니다.
 5. **저장하고 승인** — 승인된 문구만 게시할 수 있습니다.
-6. **게시됨으로 표시** — Threads에 손으로 올린 뒤, 앱에서 상태와 게시 번호를 남깁니다.
+6. **API로 게시** — 승인된 프로필을 Threads Publishing API로 실제 게시합니다. 앱에서 상태와 게시
+   번호(seq), 게시물 id가 함께 남습니다. 최초 1회 `/admin/settings`에서 "Threads 연결"이 필요합니다.
 7. **매칭 추천** — 프로필에서 1→N 후보를 LLM이 고르고 양방향 전달 DM 초안을 씁니다. 수락하면 전달 큐에 올라갑니다.
 8. **전달** — 확장 전달 큐에서 문구를 삽입한 뒤, 운영자가 Threads에서 보냅니다 (자동 Send 없음).
 9. **보관** — 보류한 프로필은 보관하고, 목록 필터로 다시 볼 수 있습니다.
 
 승인 후 문구를 고치면 상태가 초안으로 돌아갑니다. 사람이 다시 봐야 하기 때문입니다.
+
+## Threads API 연동 (최초 1회)
+
+1. [Meta for Developers](https://developers.facebook.com)에서 앱 생성 → "Threads API" 제품 추가.
+2. 앱 설정에 redirect URI로 배포 도메인의 `/api/admin/threads/callback`을 등록
+   (예: `https://<도메인>/api/admin/threads/callback`).
+3. 발급된 App ID/App Secret을 `.env`의 `THREADS_APP_ID`/`THREADS_APP_SECRET`에, redirect URI를
+   `THREADS_REDIRECT_URI`에 그대로 넣는다.
+4. 관리자 로그인 후 `/admin/settings`의 "Threads 연동"에서 "Threads 연결"을 눌러 OAuth를 완료한다.
+   이후 앱이 장기 토큰을 보관·자동 갱신한다.
 
 ## 관심 문의 (인바운드 매칭)
 
@@ -112,7 +123,9 @@ GCP Cloud Run 배포는 [docs/deploy-gcp.md](docs/deploy-gcp.md) (nngn-ops Cloud
 
 ## 알려진 한계
 
-- **Threads Publishing API(서브시스템 3)는 아직 없습니다.** 게시는 손으로 하고, 승인된 프로필에서 「게시됨으로 표시」로 상태·게시 번호(`seq`)만 앱에 남깁니다.
+- **사진은 아직 API로 게시할 수 없습니다.** 텍스트(`finalBody`)만 Threads Publishing API로 게시합니다.
+- **Threads 연결(OAuth)은 로컬에서 실제로 테스트할 수 없습니다.** Meta가 `https` redirect URI를
+  요구해 배포 환경(또는 터널)에서만 연결을 완료할 수 있습니다.
 - **전달은 삽입까지입니다.** Threads Send를 자동 클릭하지 않습니다. DM API도 없습니다.
 - 확장 수집·삽입은 Threads DOM에 의존합니다. UI가 바뀌면 실패할 수 있으며, 그때는 관리자 붙여넣기·클립보드 폴백을 쓰세요.
 - DM CDN 사진은 만료·CORS로 업로드가 실패할 수 있습니다. 관리자에서 사진을 보완하세요.
