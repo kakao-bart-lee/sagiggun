@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { THREADS_OAUTH_STATE_COOKIE } from '@/lib/threads/state-cookie';
 
@@ -18,6 +18,7 @@ function callbackRequest(query: string, cookie?: string): NextRequest {
 
 describe('GET /api/admin/threads/callback', () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.useRealTimers());
 
   it('state가 쿠키와 다르면 400이고 아무 것도 저장하지 않는다', async () => {
     const { saveThreadsAccount } = await import('@/lib/threads/account');
@@ -26,6 +27,10 @@ describe('GET /api/admin/threads/callback', () => {
     const response = await GET(request);
     expect(response.status).toBe(400);
     expect(saveThreadsAccount).not.toHaveBeenCalled();
+    // state 불일치로 거부하는 응답도 leftover state 쿠키를 남기면 재사용(replay) 위험이 있다 —
+    // 모든 응답 경로에서 지워야 한다는 게 이 라우트의 불변 조건이다.
+    const clearedCookie = response.cookies.get(THREADS_OAUTH_STATE_COOKIE);
+    expect(clearedCookie?.value).toBe('');
   });
 
   it('state 쿠키가 없으면 400', async () => {
@@ -49,6 +54,10 @@ describe('GET /api/admin/threads/callback', () => {
   });
 
   it('교환에 성공하면 계정을 저장하고 설정 화면으로 리다이렉트한다', async () => {
+    const fixedNow = new Date('2026-01-01T00:00:00.000Z').getTime();
+    vi.useFakeTimers();
+    vi.setSystemTime(fixedNow);
+
     const { getEnv } = await import('@/lib/env');
     (getEnv as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       threadsAppId: 'app123',
@@ -76,7 +85,48 @@ describe('GET /api/admin/threads/callback', () => {
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toContain('/admin/settings?threadsConnected=1');
     expect(saveThreadsAccount).toHaveBeenCalledWith(
-      expect.objectContaining({ threadsUserId: 'u1', username: 'handle', accessToken: 'long' })
+      expect.objectContaining({
+        threadsUserId: 'u1',
+        username: 'handle',
+        accessToken: 'long',
+        tokenExpiresAt: new Date(fixedNow + 5_183_944 * 1000),
+      })
+    );
+  });
+
+  it('username 조회가 실패해도 계정은 저장하고 설정 화면으로 리다이렉트한다', async () => {
+    const { getEnv } = await import('@/lib/env');
+    (getEnv as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      threadsAppId: 'app123',
+      threadsAppSecret: 'secret123',
+      threadsRedirectUri: 'https://example.com/api/admin/threads/callback',
+    });
+    const { exchangeCodeForToken, exchangeForLongLivedToken, fetchThreadsUsername } = await import(
+      '@/lib/threads/client'
+    );
+    (exchangeCodeForToken as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      accessToken: 'short',
+      userId: 'u1',
+    });
+    (exchangeForLongLivedToken as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      accessToken: 'long',
+      expiresInSeconds: 5_183_944,
+    });
+    // 토큰 교환은 이미 성공했다(1회용 code도 이미 소비됨) — 그 뒤 /me 조회만 실패하는
+    // 시나리오. 이 실패가 전체 연결을 무산시키면 안 된다(route.ts의 `.catch(() => null)`).
+    (fetchThreadsUsername as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('profile fetch failed')
+    );
+    const { saveThreadsAccount } = await import('@/lib/threads/account');
+
+    const { GET } = await import('@/app/api/admin/threads/callback/route');
+    const request = callbackRequest('?code=abc&state=expected', `${THREADS_OAUTH_STATE_COOKIE}=expected`);
+    const response = await GET(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toContain('/admin/settings?threadsConnected=1');
+    expect(saveThreadsAccount).toHaveBeenCalledWith(
+      expect.objectContaining({ threadsUserId: 'u1', username: null, accessToken: 'long' })
     );
   });
 
