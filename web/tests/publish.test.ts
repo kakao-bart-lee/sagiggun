@@ -1,0 +1,177 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { publishToThreads, deletePhoto } from '@/lib/profile/service';
+import { ThreadsApiError } from '@/lib/threads/client';
+import type { Profile, Status } from '@prisma/client';
+import type { ThreadsAccountInfo } from '@/lib/threads/account';
+
+function fakeProfile(partial: Partial<Profile> & { id: string; status: Status }): Profile {
+  return {
+    seq: null,
+    sourceHandle: 'x',
+    rawText: 'raw',
+    gender: null,
+    birthYear: null,
+    region: null,
+    heightCm: null,
+    job: null,
+    hobbies: [],
+    appealPoints: [],
+    idealType: [],
+    partnerBirthYearMin: null,
+    partnerBirthYearMax: null,
+    partnerRegions: [],
+    dealBreakers: [],
+    draftBody: null,
+    finalBody: '✨ 본문',
+    publishedPostId: null,
+    publishedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...partial,
+  };
+}
+
+function fakeAccount(partial: Partial<ThreadsAccountInfo> = {}): ThreadsAccountInfo {
+  return {
+    threadsUserId: 'u1',
+    username: 'handle',
+    accessToken: 'token',
+    tokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    ...partial,
+  };
+}
+
+describe('publishToThreads', () => {
+  it('APPROVED이면 게시하고 PUBLISHED로 올려 seq·postId를 남긴다', async () => {
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => 'fresh-token',
+      publishText: async () => 'post-123',
+      commit: async () =>
+        fakeProfile({
+          id: 'p1',
+          status: 'PUBLISHED',
+          seq: 7,
+          finalBody: '✨ 본문',
+          publishedAt: new Date(),
+          publishedPostId: 'post-123',
+        }),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.profile.status).toBe('PUBLISHED');
+      expect(result.profile.seq).toBe(7);
+      expect(result.profile.publishedPostId).toBe('post-123');
+    }
+  });
+
+  it('승인 전이면 400이고 Threads를 호출하지 않는다', async () => {
+    const publishText = vi.fn();
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'DRAFTED', finalBody: '✨ 본문' }),
+      publishText,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+    expect(publishText).not.toHaveBeenCalled();
+  });
+
+  it('없으면 404', async () => {
+    const result = await publishToThreads('missing', { find: async () => null });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(404);
+  });
+
+  it('Threads 연결이 없으면 400', async () => {
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => null,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+      expect(result.error).toMatch(/연결/);
+    }
+  });
+
+  it('토큰이 만료됐으면 400', async () => {
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => {
+        throw new Error('만료');
+      },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+      expect(result.error).toMatch(/다시 연결/);
+    }
+  });
+
+  it('Threads API 호출이 실패하면 502이고 오류 메시지를 그대로 전달한다', async () => {
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => 'fresh-token',
+      publishText: async () => {
+        throw new ThreadsApiError('일일 게시 한도를 초과했습니다.');
+      },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(502);
+      expect(result.error).toBe('일일 게시 한도를 초과했습니다.');
+    }
+  });
+
+  it('게시는 성공했지만 DB 반영이 쓰기 경쟁으로 실패하면 post id를 담아 409를 준다', async () => {
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => 'fresh-token',
+      publishText: async () => 'post-999',
+      commit: async () => null,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(409);
+      expect(result.error).toMatch(/post-999/);
+    }
+  });
+});
+
+describe('deletePhoto', () => {
+  it('파일과 행을 지운다', async () => {
+    const removeFile = vi.fn(async () => {});
+    const deleteRow = vi.fn(async () => {});
+    const result = await deletePhoto('ph1', {
+      find: async () => ({ id: 'ph1', storageKey: 'p/a.jpg' }),
+      removeFile,
+      deleteRow,
+    });
+    expect(result).toEqual({ ok: true });
+    expect(removeFile).toHaveBeenCalledWith('p/a.jpg');
+    expect(deleteRow).toHaveBeenCalledWith('ph1');
+  });
+
+  it('없으면 404', async () => {
+    const result = await deletePhoto('missing', { find: async () => null });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(404);
+  });
+
+  it('파일 삭제 실패해도 행은 지운다', async () => {
+    const deleteRow = vi.fn(async () => {});
+    const result = await deletePhoto('ph1', {
+      find: async () => ({ id: 'ph1', storageKey: 'p/a.jpg' }),
+      removeFile: async () => {
+        throw new Error('disk');
+      },
+      deleteRow,
+    });
+    expect(result).toEqual({ ok: true });
+    expect(deleteRow).toHaveBeenCalledWith('ph1');
+  });
+});
