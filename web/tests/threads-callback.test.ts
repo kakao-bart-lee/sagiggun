@@ -130,6 +130,37 @@ describe('GET /api/admin/threads/callback', () => {
     );
   });
 
+  it('리다이렉트는 요청 호스트가 아니라 THREADS_REDIRECT_URI의 origin을 기준으로 만든다', async () => {
+    // 이 요청은 http://localhost에서 온 것으로 보이지만(reverse proxy·터널 뒤에서 Next.js가
+    // 흔히 내부 호스트를 그렇게 잘못 본다), 실제 공개 주소는 threadsRedirectUri인
+    // https://example.com이다. request.url을 기준으로 리다이렉트를 만들면 브라우저가
+    // 존재하지 않는 내부 호스트로 튕겨 나간다 — 실제로 겪은 버그.
+    const { getEnv } = await import('@/lib/env');
+    (getEnv as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      threadsAppId: 'app123',
+      threadsAppSecret: 'secret123',
+      threadsRedirectUri: 'https://example.com/api/admin/threads/callback',
+    });
+    const { exchangeCodeForToken, exchangeForLongLivedToken, fetchThreadsUsername } = await import(
+      '@/lib/threads/client'
+    );
+    (exchangeCodeForToken as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      accessToken: 'short',
+      userId: 'u1',
+    });
+    (exchangeForLongLivedToken as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      accessToken: 'long',
+      expiresInSeconds: 5_183_944,
+    });
+    (fetchThreadsUsername as unknown as ReturnType<typeof vi.fn>).mockResolvedValue('handle');
+
+    const { GET } = await import('@/app/api/admin/threads/callback/route');
+    const request = callbackRequest('?code=abc&state=expected', `${THREADS_OAUTH_STATE_COOKIE}=expected`);
+    const response = await GET(request);
+
+    expect(response.headers.get('location')).toBe('https://example.com/admin/settings?threadsConnected=1');
+  });
+
   it('교환이 실패하면 오류 메시지를 담아 설정 화면으로 리다이렉트하고 저장하지 않는다', async () => {
     const { getEnv } = await import('@/lib/env');
     (getEnv as unknown as ReturnType<typeof vi.fn>).mockReturnValue({

@@ -27,6 +27,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // request.url을 리다이렉트 기준으로 쓰면 리버스 프록시/터널(ngrok 등) 뒤에서 Next.js가 내부
+  // 호스트(예: localhost:3000)로 잘못 해석해 엉뚱한 주소로 리다이렉트한다. Meta에 등록한
+  // THREADS_REDIRECT_URI가 이 앱의 진짜 공개 주소이므로 그 origin을 기준으로 쓴다.
+  const appOrigin = new URL(env.threadsRedirectUri).origin;
+
   try {
     const shortLived = await exchangeCodeForToken({
       appId: env.threadsAppId,
@@ -51,12 +56,12 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Threads 연결에 실패했습니다.';
     return withClearedStateCookie(
       NextResponse.redirect(
-        new URL(`/admin/settings?threadsError=${encodeURIComponent(message)}`, request.url)
+        new URL(`/admin/settings?threadsError=${encodeURIComponent(message)}`, appOrigin)
       )
     );
   }
 
   return withClearedStateCookie(
-    NextResponse.redirect(new URL('/admin/settings?threadsConnected=1', request.url))
+    NextResponse.redirect(new URL('/admin/settings?threadsConnected=1', appOrigin))
   );
 }
