@@ -96,6 +96,19 @@ export async function fetchThreadsUsername(args: { accessToken: string }): Promi
   return typeof data.username === 'string' ? data.username : null;
 }
 
+// threads_publish는 permalink를 돌려주지 않는다 — Threads가 계산한 공개 열람 URL이
+// 필요하면 게시 후 이 조회를 한 번 더 해야 한다.
+export async function fetchThreadsPermalink(args: {
+  accessToken: string;
+  postId: string;
+}): Promise<string | null> {
+  const url = new URL(`https://graph.threads.net/v1.0/${args.postId}`);
+  url.searchParams.set('fields', 'permalink');
+  url.searchParams.set('access_token', args.accessToken);
+  const data = await getJson(url.toString());
+  return typeof data.permalink === 'string' ? data.permalink : null;
+}
+
 // container→publish 사이 공식 권장 대기(30초)는 텍스트 전용에는 과하다 — 미디어 다운로드가
 // 없어 대개 즉시 끝난다. 그래서 먼저 즉시 publish를 시도하고, 실패했을 때만 상태를 확인해
 // 짧게 재시도한다. 폴링 간격·횟수는 troubleshooting 문서의 상태값(IN_PROGRESS/ERROR/EXPIRED/

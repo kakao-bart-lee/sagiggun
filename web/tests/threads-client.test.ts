@@ -5,6 +5,7 @@ import {
   exchangeForLongLivedToken,
   refreshLongLivedToken,
   fetchThreadsUsername,
+  fetchThreadsPermalink,
   publishThreadsPost,
   deleteThreadsPost,
   ThreadsApiError,
@@ -143,6 +144,38 @@ describe('fetchThreadsUsername', () => {
   it('username이 없으면 null', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ id: '17841405793187218' }));
     expect(await fetchThreadsUsername({ accessToken: 'long-token' })).toBeNull();
+  });
+});
+
+describe('fetchThreadsPermalink', () => {
+  const fetchMock = vi.fn();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  it('permalink을 돌려준다', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ id: 'post-1', permalink: 'https://www.threads.com/@handle/post/abc123' })
+    );
+    const result = await fetchThreadsPermalink({ accessToken: 'token', postId: 'post-1' });
+    expect(result).toBe('https://www.threads.com/@handle/post/abc123');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://graph.threads.net/v1.0/post-1?fields=permalink&access_token=token',
+      expect.anything()
+    );
+  });
+
+  it('permalink이 없으면 null', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: 'post-1' }));
+    expect(await fetchThreadsPermalink({ accessToken: 'token', postId: 'post-1' })).toBeNull();
+  });
+
+  it('실패하면 ThreadsApiError를 던진다', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: { message: '조회 실패' } }, 400));
+    await expect(
+      fetchThreadsPermalink({ accessToken: 'token', postId: 'post-1' })
+    ).rejects.toThrow('조회 실패');
   });
 });
 

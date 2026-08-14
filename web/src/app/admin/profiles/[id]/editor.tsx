@@ -22,6 +22,7 @@ type Profile = {
   dealBreakers: string[];
   draftBody: string | null;
   finalBody: string | null;
+  publishedPermalink: string | null;
 };
 
 function linesToList(value: string): string[] {
@@ -151,6 +152,16 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
           label={STATUS_LABEL[profile.status] ?? profile.status}
           tone={statusTone(profile.status)}
         />
+        {profile.publishedPermalink && (
+          <a
+            href={profile.publishedPermalink}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm font-bold text-telop-blue underline"
+          >
+            게시글 보기
+          </a>
+        )}
         <StampButton
           tone="ghost"
           onClick={async () => {

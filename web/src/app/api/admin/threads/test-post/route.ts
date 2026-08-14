@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getThreadsAccount } from '@/lib/threads/account';
 import { ensureFreshThreadsToken } from '@/lib/profile/service';
-import { publishThreadsPost, ThreadsApiError } from '@/lib/threads/client';
+import { publishThreadsPost, fetchThreadsPermalink, ThreadsApiError } from '@/lib/threads/client';
 
 const bodySchema = z.object({ text: z.string().trim().min(1) });
 
@@ -38,7 +38,14 @@ export async function POST(request: Request) {
       threadsUserId: account.threadsUserId,
       text: parsed.data.text,
     });
-    return NextResponse.json({ postId });
+    // permalink 조회 실패는 게시 자체를 막지 않는다 — 이미 올라간 뒤라 postId만으로도 충분하다.
+    let permalink: string | null = null;
+    try {
+      permalink = await fetchThreadsPermalink({ accessToken, postId });
+    } catch (error) {
+      console.warn('[threads] 테스트 게시 permalink 조회 실패', error);
+    }
+    return NextResponse.json({ postId, permalink });
   } catch (error) {
     const message = error instanceof ThreadsApiError ? error.message : 'Threads 게시에 실패했습니다.';
     return NextResponse.json({ error: message }, { status: 502 });

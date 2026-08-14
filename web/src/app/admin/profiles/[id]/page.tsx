@@ -112,6 +112,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             dealBreakers: profile.dealBreakers,
             draftBody: profile.draftBody,
             finalBody: profile.finalBody,
+            publishedPermalink: profile.publishedPermalink,
           }}
         />
       </div>

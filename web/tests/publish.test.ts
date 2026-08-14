@@ -24,6 +24,7 @@ function fakeProfile(partial: Partial<Profile> & { id: string; status: Status })
     draftBody: null,
     finalBody: '✨ 본문',
     publishedPostId: null,
+    publishedPermalink: null,
     publishedAt: null,
     publishStartedAt: null,
     createdAt: new Date(),
@@ -69,6 +70,43 @@ describe('publishToThreads', () => {
       expect(result.profile.publishedPostId).toBe('post-123');
     }
     expect(releaseClaim).not.toHaveBeenCalled();
+  });
+
+  it('permalink 조회에 성공하면 commit에 그대로 전달한다', async () => {
+    const commit = vi.fn(async () =>
+      fakeProfile({ id: 'p1', status: 'PUBLISHED', seq: 7, publishedPostId: 'post-123' })
+    );
+    await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => 'fresh-token',
+      claim: async () => true,
+      publishText: async () => 'post-123',
+      fetchPermalink: async () => 'https://www.threads.com/@handle/post/abc123',
+      commit,
+    });
+    expect(commit).toHaveBeenCalledWith(
+      expect.objectContaining({ publishedPermalink: 'https://www.threads.com/@handle/post/abc123' })
+    );
+  });
+
+  it('permalink 조회가 실패해도 게시 자체는 성공하고, permalink는 null로 넘어간다', async () => {
+    const commit = vi.fn(async () =>
+      fakeProfile({ id: 'p1', status: 'PUBLISHED', seq: 7, publishedPostId: 'post-123' })
+    );
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => 'fresh-token',
+      claim: async () => true,
+      publishText: async () => 'post-123',
+      fetchPermalink: async () => {
+        throw new Error('permalink 조회 실패');
+      },
+      commit,
+    });
+    expect(result.ok).toBe(true);
+    expect(commit).toHaveBeenCalledWith(expect.objectContaining({ publishedPermalink: null }));
   });
 
   it('승인 전이면 400이고 Threads를 호출하지 않는다', async () => {

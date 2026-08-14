@@ -25,6 +25,7 @@ export function ThreadsSettings({
   const [testBusy, setTestBusy] = useState(false);
   const [testMessage, setTestMessage] = useState('');
   const [testPostId, setTestPostId] = useState<string | null>(null);
+  const [testPermalink, setTestPermalink] = useState<string | null>(null);
 
   async function disconnect() {
     if (!confirm('Threads 연결을 해제할까요?')) return;
@@ -45,6 +46,7 @@ export function ThreadsSettings({
     setTestBusy(true);
     setTestMessage('');
     setTestPostId(null);
+    setTestPermalink(null);
     const response = await fetch('/api/admin/threads/test-post', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -57,6 +59,7 @@ export function ThreadsSettings({
       return;
     }
     setTestPostId(data.postId);
+    setTestPermalink(data.permalink ?? null);
     setTestMessage('게시했습니다.');
   }
 
@@ -74,6 +77,7 @@ export function ThreadsSettings({
       return;
     }
     setTestPostId(null);
+    setTestPermalink(null);
     setTestMessage('지웠습니다.');
     setTestText('');
   }
@@ -135,7 +139,25 @@ export function ThreadsSettings({
               </StampButton>
             )}
           </div>
-          {testMessage ? <p className="text-sm text-on-card">{testMessage}</p> : null}
+          {testMessage ? (
+            <p className="text-sm text-on-card">
+              {testMessage}
+              {testPermalink ? (
+                <>
+                  {' '}
+                  ·{' '}
+                  <a
+                    href={testPermalink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold text-telop-blue underline"
+                  >
+                    글 보기
+                  </a>
+                </>
+              ) : null}
+            </p>
+          ) : null}
         </div>
       )}
     </div>

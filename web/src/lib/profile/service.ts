@@ -1,7 +1,12 @@
 import { removePhoto } from '@/lib/storage';
 import { canPublish } from '@/lib/profile/state';
 import { getThreadsAccount, updateThreadsAccessToken } from '@/lib/threads/account';
-import { refreshLongLivedToken, publishThreadsPost, ThreadsApiError } from '@/lib/threads/client';
+import {
+  refreshLongLivedToken,
+  publishThreadsPost,
+  fetchThreadsPermalink,
+  ThreadsApiError,
+} from '@/lib/threads/client';
 import type { ThreadsAccountInfo } from '@/lib/threads/account';
 import type { Profile, Status } from '@prisma/client';
 
@@ -74,12 +79,15 @@ export type PublishDeps = {
   }) => Promise<boolean>;
   releaseClaim?: (id: string) => Promise<void>;
   publishText?: (args: { accessToken: string; threadsUserId: string; text: string }) => Promise<string>;
+  // 실패해도 게시 자체를 막지 않는다 — 게시는 이미 끝났고 permalink는 부가 정보다.
+  fetchPermalink?: (args: { accessToken: string; postId: string }) => Promise<string | null>;
   beforeWrite?: () => void | Promise<void>;
   commit?: (args: {
     id: string;
     expectedStatus: Status;
     expectedFinalBody: string | null;
     publishedPostId: string;
+    publishedPermalink: string | null;
   }) => Promise<Profile | null>;
 };
 
@@ -217,11 +225,28 @@ export async function publishToThreads(id: string, deps: PublishDeps = {}): Prom
     return { ok: false, status: 502, error: message };
   }
 
+  // permalink는 Threads가 계산해서 따로 조회해 줘야 하는 부가 정보다 — 이 조회가 실패해도
+  // 게시 자체는 이미 끝난 뒤이므로 막지 않는다. null로 남아도 게시 결과에는 영향이 없다.
+  const fetchPermalink = deps.fetchPermalink ?? fetchThreadsPermalink;
+  let publishedPermalink: string | null;
+  try {
+    publishedPermalink = await fetchPermalink({ accessToken, postId: publishedPostId });
+  } catch (error) {
+    console.warn('[threads] permalink 조회 실패', error);
+    publishedPermalink = null;
+  }
+
   await deps.beforeWrite?.();
 
   const commit =
     deps.commit ??
-    (async ({ id: profileId, expectedStatus, expectedFinalBody, publishedPostId: postId }) => {
+    (async ({
+      id: profileId,
+      expectedStatus,
+      expectedFinalBody,
+      publishedPostId: postId,
+      publishedPermalink: permalink,
+    }) => {
       const { prisma } = await import('@/lib/prisma');
       // seq는 @unique인데 max+1로 뽑으므로 동시에 두 건이 게시되면 같은 값을 노려 P2002가 난다.
       // 이 시점에는 Threads에 이미 글이 올라간 뒤라 그냥 던지면 "게시됐는데 기록 없음"이 되므로,
@@ -238,6 +263,7 @@ export async function publishToThreads(id: string, deps: PublishDeps = {}): Prom
                 publishedAt: new Date(),
                 seq: nextSeq,
                 publishedPostId: postId,
+                publishedPermalink: permalink,
                 publishStartedAt: null,
               },
             });
@@ -258,6 +284,7 @@ export async function publishToThreads(id: string, deps: PublishDeps = {}): Prom
       expectedStatus: profile.status,
       expectedFinalBody: profile.finalBody,
       publishedPostId,
+      publishedPermalink,
     });
   } catch (error) {
     // Threads에는 이미 올라갔고 DB 반영만 실패했다. 선점을 일부러 풀지 않는다 — 바로 다시

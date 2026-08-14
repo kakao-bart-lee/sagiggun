@@ -6,7 +6,12 @@ vi.mock('@/lib/profile/service', () => ({ ensureFreshThreadsToken: vi.fn() }));
 // 검증된다 — 네트워크를 실제로 타는 publishThreadsPost/deleteThreadsPost만 목으로 바꾼다.
 vi.mock('@/lib/threads/client', async () => {
   const actual = await vi.importActual('@/lib/threads/client');
-  return { ...actual, publishThreadsPost: vi.fn(), deleteThreadsPost: vi.fn() };
+  return {
+    ...actual,
+    publishThreadsPost: vi.fn(),
+    deleteThreadsPost: vi.fn(),
+    fetchThreadsPermalink: vi.fn(),
+  };
 });
 
 function fakeAccount() {
@@ -80,6 +85,49 @@ describe('POST /api/admin/threads/test-post', () => {
       threadsUserId: 'u1',
       text: '테스트 글',
     });
+  });
+
+  it('성공하면 permalink도 함께 돌려준다', async () => {
+    const { getThreadsAccount } = await import('@/lib/threads/account');
+    (getThreadsAccount as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(fakeAccount());
+    const { ensureFreshThreadsToken } = await import('@/lib/profile/service');
+    (ensureFreshThreadsToken as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      'fresh-token'
+    );
+    const { publishThreadsPost, fetchThreadsPermalink } = await import('@/lib/threads/client');
+    (publishThreadsPost as unknown as ReturnType<typeof vi.fn>).mockResolvedValue('post-999');
+    (fetchThreadsPermalink as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      'https://www.threads.com/@handle/post/abc123'
+    );
+
+    const response = await postTestPost({ text: '테스트 글' });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.permalink).toBe('https://www.threads.com/@handle/post/abc123');
+    expect(fetchThreadsPermalink).toHaveBeenCalledWith({
+      accessToken: 'fresh-token',
+      postId: 'post-999',
+    });
+  });
+
+  it('permalink 조회가 실패해도 게시 자체는 성공하고 permalink는 null로 온다', async () => {
+    const { getThreadsAccount } = await import('@/lib/threads/account');
+    (getThreadsAccount as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(fakeAccount());
+    const { ensureFreshThreadsToken } = await import('@/lib/profile/service');
+    (ensureFreshThreadsToken as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      'fresh-token'
+    );
+    const { publishThreadsPost, fetchThreadsPermalink } = await import('@/lib/threads/client');
+    (publishThreadsPost as unknown as ReturnType<typeof vi.fn>).mockResolvedValue('post-999');
+    (fetchThreadsPermalink as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('permalink 조회 실패')
+    );
+
+    const response = await postTestPost({ text: '테스트 글' });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.postId).toBe('post-999');
+    expect(body.permalink).toBeNull();
   });
 
   it('Threads가 게시를 거절하면 502이고 오류 메시지를 그대로 전달한다', async () => {
