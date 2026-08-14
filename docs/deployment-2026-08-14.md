@@ -17,27 +17,28 @@
   (`add_publish_started_at`, `add_threads_account`,
   `add_published_permalink` 포함) — 별도 수동 마이그레이션 불필요.
 
-## Threads 운영 연동은 이번 배포에 포함되지 않음
+## Threads 운영 연동은 최초 배포에 포함되지 않았음 (이후 후속 배포로 완료)
 
-`cloudbuild.yaml`의 `--set-env-vars`/`--set-secrets`에 `THREADS_APP_ID`,
-`THREADS_APP_SECRET`, `THREADS_REDIRECT_URI`가 아직 없다. 즉 이번 배포로
-코드는 올라갔지만 운영 `/admin/settings`의 "Threads 연결"은
-`env.threadsAppId` 등이 비어 있어 503("Threads 앱 설정이 없습니다")을
-그대로 돌려준다. 사용자와 논의해 이번 배포 범위에서 의도적으로 제외했다.
+최초 배포(`sagiggun-00007-jbl`) 시점에는 `cloudbuild.yaml`의
+`--set-env-vars`/`--set-secrets`에 `THREADS_APP_ID`, `THREADS_APP_SECRET`,
+`THREADS_REDIRECT_URI`가 없어 운영 `/admin/settings`의 "Threads 연결"이
+503을 돌려줬다. 사용자가 Meta 대시보드에 운영용 redirect URI
+(`https://love.nngn.ai/api/admin/threads/callback`, `threads_delete` 권한
+포함)를 직접 등록한 뒤, 아래 후속 배포로 마무리했다.
 
-다음에 Threads 운영 연동을 진행할 때 필요한 것:
+### 후속 배포 (운영 Threads OAuth 연결)
 
-1. Meta 개발자 대시보드에서 운영용 redirect URI
-   `https://love.nngn.ai/api/admin/threads/callback`을 등록(사용자가 직접
-   해야 함 — Meta 계정 작업).
-2. `THREADS_APP_SECRET`을 Secret Manager에 새 시크릿으로 추가(예:
-   `sagiggun-threads-app-secret`).
-3. `cloudbuild.yaml`의 `--set-env-vars`에 `THREADS_APP_ID=...,
-   THREADS_REDIRECT_URI=https://love.nngn.ai/api/admin/threads/callback`을,
-   `--set-secrets`에 `THREADS_APP_SECRET=sagiggun-threads-app-secret:latest`를
-   추가.
-4. 재배포 후 관리자 로그인 → `/admin/settings`에서 "Threads 연결"로 OAuth
-   완료.
+- `sagiggun-threads-app-secret` Secret Manager 시크릿을 새로 만들고
+  `sa-sagiggun-run` 서비스 계정에 `secretAccessor` 권한 부여.
+- `cloudbuild.yaml`에 `_THREADS_APP_ID`/`_THREADS_REDIRECT_URI`
+  substitutions와 `THREADS_APP_ID`/`THREADS_REDIRECT_URI` env var,
+  `THREADS_APP_SECRET=sagiggun-threads-app-secret:latest` secret을 추가
+  (commit `e7f6f8f`, main에 직접 push).
+- `gcloud builds submit --config=cloudbuild.yaml --project=haruto-snow
+  --substitutions=_LLM_MODE=mock,_LLM_PROVIDER=openai,_LLM_MODEL=gpt-5.6-luna,_LLM_REASONING=high .`
+  로 재배포 → `sagiggun-00009-xpx`, traffic 100%. (중간에 `sagiggun-00008-ljz`는
+  cloudbuild.yaml 반영 전 소스로 잘못 제출된 빌드라 env가 비어 있었음 —
+  올바른 소스로 다시 제출해 00009로 대체됨.)
 
 ## 검증 결과
 
@@ -47,3 +48,9 @@
 - Cloudflare `https://love.nngn.ai/`(공개 홈): 200
 - 신규 revision(`sagiggun-00007-jbl`) 시작 로그: 마이그레이션 6건 전부 적용,
   `✓ Ready` 확인
+- `sagiggun-00009-xpx` env에 `THREADS_APP_ID`/`THREADS_REDIRECT_URI`/
+  `THREADS_APP_SECRET` 정상 반영 확인 (`gcloud run revisions describe`)
+- 운영 관리자 로그인 후 `GET /api/admin/threads/connect` → 307로
+  `https://threads.net/oauth/authorize?...redirect_uri=https%3A%2F%2Flove.nngn.ai%2Fapi%2Fadmin%2Fthreads%2Fcallback&scope=threads_basic%2Cthreads_content_publish%2Cthreads_delete...`
+  정상 리다이렉트 확인. 실제 OAuth 동의(Threads 계정 로그인)는 사용자가
+  브라우저에서 직접 완료해야 한다 — 여기까지는 자동화 검증, 그 뒤는 수동.
