@@ -33,9 +33,15 @@ const schema = z.object({
     (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
     z.string().trim().min(1).optional()
   ),
+  // Meta는 https redirect URI만 허용한다. 형식이 틀리면 콜백 라우트의 new URL()이 던지는
+  // 애매한 500 대신, 기동 시점에 바로 실패하게 한다.
   THREADS_REDIRECT_URI: z.preprocess(
-    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-    z.string().trim().min(1).optional()
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed === '' ? undefined : trimmed;
+    },
+    z.url({ protocol: /^https$/ }).optional()
   ),
 });
 

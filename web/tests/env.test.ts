@@ -122,4 +122,20 @@ describe('getEnv', () => {
     expect(env.threadsAppSecret).toBeNull();
     expect(env.threadsRedirectUri).toBeNull();
   });
+
+  // THREADS_REDIRECT_URI가 URL 형식이 아니면 콜백 라우트 안에서 new URL()이 던지는
+  // 애매한 500 대신, 서버 기동 시점에 바로 이유를 알려주며 실패해야 한다.
+  it('THREADS_REDIRECT_URI가 URL 형식이 아니면 무엇이 문제인지 알려주며 실패한다', () => {
+    expect(() => getEnv({ ...full, THREADS_REDIRECT_URI: '아무 문자열' })).toThrow(
+      /THREADS_REDIRECT_URI/
+    );
+  });
+
+  // Meta의 Threads OAuth는 https redirect URI만 허용한다(README 참고). http://를 설정에
+  // 넣는 실수를 로컬 기동 시점에 잡는다.
+  it('THREADS_REDIRECT_URI가 https가 아니면 실패한다', () => {
+    expect(() =>
+      getEnv({ ...full, THREADS_REDIRECT_URI: 'http://example.com/api/admin/threads/callback' })
+    ).toThrow(/THREADS_REDIRECT_URI/);
+  });
 });

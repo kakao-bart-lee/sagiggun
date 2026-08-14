@@ -182,6 +182,27 @@ describe('publishToThreads', () => {
     expect(releaseClaim).toHaveBeenCalledWith('p1');
   });
 
+  it('Threads가 명시적으로 거절한 게 아닌 오류(타임아웃 등)면 선점을 풀지 않는다', async () => {
+    // ThreadsApiError는 Threads가 "거절했다"는 확실한 신호라 글이 없다고 볼 수 있다.
+    // 그 외(타임아웃·네트워크 오류)는 요청이 Threads에 실제로 닿았는지 알 수 없으므로,
+    // 여기서 선점을 풀면 운영자가 재시도했을 때 이미 올라간 글이 중복 게시될 수 있다 —
+    // 이번 선점 기능이 막으려던 바로 그 상황이라 선점을 유지해야 한다.
+    const releaseClaim = vi.fn(async () => {});
+    const result = await publishToThreads('p1', {
+      find: async () => ({ id: 'p1', status: 'APPROVED', finalBody: '✨ 본문' }),
+      getAccount: async () => fakeAccount(),
+      ensureFreshToken: async () => 'fresh-token',
+      claim: async () => true,
+      publishText: async () => {
+        throw new Error('요청 시간 초과');
+      },
+      releaseClaim,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(502);
+    expect(releaseClaim).not.toHaveBeenCalled();
+  });
+
   it('게시 성공 후 commit이 throw하면 409 + post id를 담고, 선점은 풀지 않는다', async () => {
     const releaseClaim = vi.fn(async () => {});
     const result = await publishToThreads('p1', {

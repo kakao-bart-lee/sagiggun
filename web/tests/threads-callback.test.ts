@@ -179,7 +179,11 @@ describe('GET /api/admin/threads/callback', () => {
     const response = await GET(request);
 
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toContain('threadsError=');
+    // 성공 경로와 마찬가지로 request.url이 아니라 threadsRedirectUri의 origin을 써야 한다 —
+    // 이 요청은 http://localhost에서 온 것으로 보이지만 실제 공개 주소는 https://example.com이다.
+    expect(response.headers.get('location')).toBe(
+      `https://example.com/admin/settings?threadsError=${encodeURIComponent('코드가 이미 사용됐습니다.')}`
+    );
     expect(saveThreadsAccount).not.toHaveBeenCalled();
   });
 });

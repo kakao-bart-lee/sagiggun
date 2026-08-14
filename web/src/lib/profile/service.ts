@@ -196,11 +196,19 @@ export async function publishToThreads(id: string, deps: PublishDeps = {}): Prom
       text: profile.finalBody ?? '',
     });
   } catch (error) {
-    // 게시 전 실패다 — 외부에 아무 일도 안 일어났으니 선점을 풀어 바로 재시도할 수 있게 한다.
-    try {
-      await releaseClaim(id);
-    } catch (releaseError) {
-      console.warn('[threads] 게시 실패 후 선점 해제 실패', releaseError);
+    // ThreadsApiError는 Threads가 명시적으로 거절했다는 신호라 글이 올라가지 않았다고 볼 수
+    // 있다 — 이때만 선점을 풀어 바로 재시도할 수 있게 한다. 그 외(타임아웃·네트워크 오류 등)는
+    // 요청이 Threads에 실제로 닿았는지 알 수 없으므로 선점을 유지한다. 여기서 풀어버리면
+    // 운영자가 재시도했을 때 이미 올라간 글이 중복 게시될 수 있다 — 이 선점 기능 자체가
+    // 막으려던 상황이다.
+    if (error instanceof ThreadsApiError) {
+      try {
+        await releaseClaim(id);
+      } catch (releaseError) {
+        console.warn('[threads] 게시 실패 후 선점 해제 실패', releaseError);
+      }
+    } else {
+      console.error('[threads] 게시 결과를 알 수 없어 선점을 유지합니다', { id, error });
     }
     const message = error instanceof ThreadsApiError ? error.message : 'Threads 게시에 실패했습니다.';
     return { ok: false, status: 502, error: message };
