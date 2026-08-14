@@ -91,4 +91,51 @@ describe('getEnv', () => {
       getEnv({ ...withoutKey, LLM_MODE: 'mock', LLM_PROVIDER: 'openai' }).llmMode
     ).toBe('mock');
   });
+
+  it('THREADS_* 값이 없으면 null이고, 있으면 trim해서 읽는다', () => {
+    expect(getEnv(full).threadsAppId).toBeNull();
+    expect(getEnv(full).threadsAppSecret).toBeNull();
+    expect(getEnv(full).threadsRedirectUri).toBeNull();
+    const env = getEnv({
+      ...full,
+      THREADS_APP_ID: ' app123 ',
+      THREADS_APP_SECRET: 'secret123',
+      THREADS_REDIRECT_URI: 'https://example.com/api/admin/threads/callback',
+    });
+    expect(env.threadsAppId).toBe('app123');
+    expect(env.threadsAppSecret).toBe('secret123');
+    expect(env.threadsRedirectUri).toBe('https://example.com/api/admin/threads/callback');
+  });
+
+  // .env.example의 THREADS_APP_ID= 처럼 "키는 있지만 값이 빈 문자열"인 경우를 반드시
+  // null로 취급해야 한다. min(1)만 걸면 빈 문자열이 optional()을 우회하지 못하고 그대로
+  // getEnv() 전체를 던지게 만든다 — cp .env.example .env로 시작한 모든 로컬 개발이 즉시
+  // 깨진다(기존 GCP_PROJECT_ID가 이미 이 함정에 빠져 있었다: 로컬에서 재현 확인함).
+  it('THREADS_*가 빈 문자열이어도(.env.example 그대로) 예외 없이 null이다', () => {
+    const env = getEnv({
+      ...full,
+      THREADS_APP_ID: '',
+      THREADS_APP_SECRET: '',
+      THREADS_REDIRECT_URI: '',
+    });
+    expect(env.threadsAppId).toBeNull();
+    expect(env.threadsAppSecret).toBeNull();
+    expect(env.threadsRedirectUri).toBeNull();
+  });
+
+  // THREADS_REDIRECT_URI가 URL 형식이 아니면 콜백 라우트 안에서 new URL()이 던지는
+  // 애매한 500 대신, 서버 기동 시점에 바로 이유를 알려주며 실패해야 한다.
+  it('THREADS_REDIRECT_URI가 URL 형식이 아니면 무엇이 문제인지 알려주며 실패한다', () => {
+    expect(() => getEnv({ ...full, THREADS_REDIRECT_URI: '아무 문자열' })).toThrow(
+      /THREADS_REDIRECT_URI/
+    );
+  });
+
+  // Meta의 Threads OAuth는 https redirect URI만 허용한다(README 참고). http://를 설정에
+  // 넣는 실수를 로컬 기동 시점에 잡는다.
+  it('THREADS_REDIRECT_URI가 https가 아니면 실패한다', () => {
+    expect(() =>
+      getEnv({ ...full, THREADS_REDIRECT_URI: 'http://example.com/api/admin/threads/callback' })
+    ).toThrow(/THREADS_REDIRECT_URI/);
+  });
 });

@@ -80,8 +80,14 @@ model Profile {
   finalBody String? @db.Text
 
   // 게시 (서브시스템 3)
-  publishedPostId String?
-  publishedAt     DateTime?
+  publishedPostId    String?
+  // Threads가 계산해 주는 공개 열람 URL. 게시 시점에 한 번 조회해 저장한다 — 이 조회
+  // 자체가 실패해도 게시는 이미 끝난 뒤이므로 게시를 막지 않는다(null로 남을 수 있다).
+  publishedPermalink String?
+  publishedAt        DateTime?
+  // Threads 게시 선점(claim). 게시가 진행되는 동안만 non-null — 겹친 요청이 같은 프로필을
+  // 두 번 게시하는 것을 막는다. 죽은 프로세스가 남긴 값은 PUBLISH_CLAIM_STALE_MS 후 무시된다.
+  publishStartedAt DateTime?
 
   photos Photo[]
 
@@ -195,4 +201,16 @@ model Inquiry {
   @@index([targetId])
   @@index([fromHandle])
   @@index([status])
+}
+
+// Threads Publishing API 연결 정보. 운영자가 한 명이라 항상 id="singleton" 행 하나만 존재한다.
+model ThreadsAccount {
+  id             String   @id @default("singleton")
+  threadsUserId  String
+  username       String?
+  accessToken    String   @db.Text
+  tokenExpiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

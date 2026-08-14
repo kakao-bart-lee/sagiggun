@@ -22,6 +22,7 @@ type Profile = {
   dealBreakers: string[];
   draftBody: string | null;
   finalBody: string | null;
+  publishedPermalink: string | null;
 };
 
 function linesToList(value: string): string[] {
@@ -151,6 +152,16 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
           label={STATUS_LABEL[profile.status] ?? profile.status}
           tone={statusTone(profile.status)}
         />
+        {profile.publishedPermalink && (
+          <a
+            href={profile.publishedPermalink}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm font-bold text-telop-blue underline"
+          >
+            게시글 보기
+          </a>
+        )}
         <StampButton
           tone="ghost"
           onClick={async () => {
@@ -417,13 +428,13 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             tone="blue"
             disabled={!!busy}
             onClick={() => {
-              if (!confirm('손으로 게시한 뒤 상태를 게시됨으로 표시할까요? (Threads API 없음)')) {
+              if (!confirm('Threads에 바로 게시할까요? 게시 후에는 취소할 수 없습니다.')) {
                 return;
               }
-              return call(`/api/profiles/${profile.id}/publish-mark`, { method: 'POST' }, 'publish');
+              return call(`/api/profiles/${profile.id}/publish`, { method: 'POST' }, 'publish');
             }}
           >
-            {busy === 'publish' ? '표시 중…' : '게시됨으로 표시'}
+            {busy === 'publish' ? '게시 중…' : 'API로 게시'}
           </StampButton>
         )}
 

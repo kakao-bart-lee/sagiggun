@@ -24,6 +24,25 @@ const schema = z.object({
   LLM_CONFIG_SECRET: z.string().trim().min(1).optional(),
   // 설정 시 GCS 버킷에 사진 저장 (Cloud Run). 비우면 PHOTO_DIR 로컬 파일.
   PHOTO_BUCKET: z.string().optional(),
+  // Threads Publishing API. 셋 다 없으면 연결 기능이 비활성(503).
+  THREADS_APP_ID: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().min(1).optional()
+  ),
+  THREADS_APP_SECRET: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().min(1).optional()
+  ),
+  // Meta는 https redirect URI만 허용한다. 형식이 틀리면 콜백 라우트의 new URL()이 던지는
+  // 애매한 500 대신, 기동 시점에 바로 실패하게 한다.
+  THREADS_REDIRECT_URI: z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed === '' ? undefined : trimmed;
+    },
+    z.url({ protocol: /^https$/ }).optional()
+  ),
 });
 
 export type Env = {
@@ -41,6 +60,9 @@ export type Env = {
   gcpProjectId: string | null;
   llmConfigSecret: string | null;
   photoBucket: string | null;
+  threadsAppId: string | null;
+  threadsAppSecret: string | null;
+  threadsRedirectUri: string | null;
 };
 
 export function getEnv(source: Record<string, string | undefined> = process.env): Env {
@@ -56,6 +78,9 @@ export function getEnv(source: Record<string, string | undefined> = process.env)
   const bucket = v.PHOTO_BUCKET?.trim() || '';
   const projectId = v.GCP_PROJECT_ID?.trim() || '';
   const configSecret = v.LLM_CONFIG_SECRET?.trim() || '';
+  const threadsAppId = v.THREADS_APP_ID?.trim() || '';
+  const threadsAppSecret = v.THREADS_APP_SECRET?.trim() || '';
+  const threadsRedirectUri = v.THREADS_REDIRECT_URI?.trim() || '';
   return {
     databaseUrl: v.DATABASE_URL,
     adminPassword: v.ADMIN_PASSWORD,
@@ -71,5 +96,8 @@ export function getEnv(source: Record<string, string | undefined> = process.env)
     gcpProjectId: projectId || null,
     llmConfigSecret: configSecret || null,
     photoBucket: bucket || null,
+    threadsAppId: threadsAppId || null,
+    threadsAppSecret: threadsAppSecret || null,
+    threadsRedirectUri: threadsRedirectUri || null,
   };
 }

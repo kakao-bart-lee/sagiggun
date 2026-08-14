@@ -89,4 +89,4 @@ Vitest + jsdom 테스트가 있습니다. 정확한 개수는 코드와 함께 �
 
 ## 범위 밖
 
-카테고리·태그, 키보드 단축키, 변수 치환, 가져오기/내보내기, 사용 통계, 드래그 정렬, Threads Publishing API는 넣지 않았습니다.
+카테고리·태그, 키보드 단축키, 변수 치환, 가져오기/내보내기, 사용 통계, 드래그 정렬은 넣지 않았습니다. Threads Publishing API 연동(OAuth 연결 + Threads Graph API로 실제 게시)은 확장이 아니라 `web/`에 있습니다([Threads API 연동](web/README.md#threads-api-연동-최초-1회)).
