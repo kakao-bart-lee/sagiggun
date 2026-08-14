@@ -28,14 +28,29 @@ async function getJson(url: string): Promise<Record<string, unknown>> {
   return parseJsonOrThrow(response);
 }
 
-async function postJson(url: string, body: Record<string, string>): Promise<Record<string, unknown>> {
+// user_id는 17자리 이상이라 IEEE754 double로 정확히 표현되지 않는 값이 있다. response.json()은
+// 내부적으로 JSON.parse를 쓰므로 그 시점에 이미 반올림돼 버린다 — 그 뒤엔 String()으로 되돌릴
+// 방법이 없다. 원문 텍스트에서 숫자 그대로(quote 유무 상관없이) 직접 뽑아내 정밀도를 지킨다.
+async function postJsonPreservingUserId(
+  url: string,
+  body: Record<string, string>
+): Promise<{ data: Record<string, unknown>; rawUserId: string | null }> {
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
-  return parseJsonOrThrow(response);
+  const text = await response.text();
+  let data: Record<string, unknown>;
+  try {
+    data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    data = {};
+  }
+  if (!response.ok) throw new ThreadsApiError(threadsErrorMessage(data, response.status));
+  const rawUserIdMatch = text.match(/"user_id"\s*:\s*"?(\d+)"?/);
+  return { data, rawUserId: rawUserIdMatch ? rawUserIdMatch[1] : null };
 }
 
 export function buildAuthorizeUrl(args: { appId: string; redirectUri: string; state: string }): string {
@@ -56,14 +71,17 @@ export async function exchangeCodeForToken(args: {
   code: string;
   redirectUri: string;
 }): Promise<{ accessToken: string; userId: string }> {
-  const data = await postJson('https://graph.threads.net/oauth/access_token', {
-    client_id: args.appId,
-    client_secret: args.appSecret,
-    code: args.code,
-    grant_type: 'authorization_code',
-    redirect_uri: args.redirectUri,
-  });
-  return { accessToken: String(data.access_token), userId: String(data.user_id) };
+  const { data, rawUserId } = await postJsonPreservingUserId(
+    'https://graph.threads.net/oauth/access_token',
+    {
+      client_id: args.appId,
+      client_secret: args.appSecret,
+      code: args.code,
+      grant_type: 'authorization_code',
+      redirect_uri: args.redirectUri,
+    }
+  );
+  return { accessToken: String(data.access_token), userId: rawUserId ?? String(data.user_id) };
 }
 
 export async function exchangeForLongLivedToken(args: {

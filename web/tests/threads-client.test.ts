@@ -60,6 +60,23 @@ describe('exchangeCodeForToken', () => {
     );
   });
 
+  it('user_id가 quote 없는 17자리 이상 정수로 와도 정밀도 손실 없이 원래 값을 돌려준다', async () => {
+    // 객체 리터럴로 만들면 이 테스트 파일이 파싱되는 시점에 V8이 숫자 리터럴 자체를
+    // 반올림해 버려서(더블 부동소수점 표현 한계) 버그를 재현하지 못한다. 와이어로
+    // 오는 원문 그대로를 흉내 내려면 raw JSON 문자열을 직접 써야 한다.
+    const rawBody = '{"access_token":"short-token","user_id":28085968781020074}';
+    fetchMock.mockResolvedValue(
+      new Response(rawBody, { status: 200, headers: { 'Content-Type': 'application/json' } })
+    );
+    const result = await exchangeCodeForToken({
+      appId: 'app123',
+      appSecret: 'secret123',
+      code: 'auth-code',
+      redirectUri: 'https://example.com/callback',
+    });
+    expect(result.userId).toBe('28085968781020074');
+  });
+
   it('실패하면 Threads의 error_message를 담아 ThreadsApiError를 던진다', async () => {
     // mockResolvedValue는 Response 인스턴스를 한 번만 만들어 매 호출에 재사용하는데, Response
     // body는 한 번만 읽을 수 있다. 아래에서 exchangeCodeForToken을 두 번 호출하므로
