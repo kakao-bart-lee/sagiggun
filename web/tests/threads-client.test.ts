@@ -6,6 +6,7 @@ import {
   refreshLongLivedToken,
   fetchThreadsUsername,
   publishThreadsPost,
+  deleteThreadsPost,
   ThreadsApiError,
 } from '@/lib/threads/client';
 
@@ -27,7 +28,9 @@ describe('buildAuthorizeUrl', () => {
     expect(url).toContain('client_id=app123');
     expect(url).toContain('response_type=code');
     expect(url).toContain('state=nonce-1');
-    expect(decodeURIComponent(url)).toContain('scope=threads_basic,threads_content_publish');
+    expect(decodeURIComponent(url)).toContain(
+      'scope=threads_basic,threads_content_publish,threads_delete'
+    );
     expect(decodeURIComponent(url)).toContain(
       'redirect_uri=https://example.com/api/admin/threads/callback'
     );
@@ -265,5 +268,32 @@ describe('publishThreadsPost', () => {
     // container 생성 1회 + (publish 시도 + 상태 확인) × 3회 = 7회
     expect(fetchMock).toHaveBeenCalledTimes(7);
     vi.useRealTimers();
+  });
+});
+
+describe('deleteThreadsPost', () => {
+  const fetchMock = vi.fn();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  it('성공하면 삭제된 post id를 돌려준다', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true, deleted_id: 'post-1' }));
+    const result = await deleteThreadsPost({ accessToken: 'token', postId: 'post-1' });
+    expect(result).toBe('post-1');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://graph.threads.net/v1.0/post-1?access_token=token',
+      expect.objectContaining({ method: 'DELETE' })
+    );
+  });
+
+  it('실패하면 Threads의 error_message를 담아 ThreadsApiError를 던진다', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ error: { message: '이미 삭제된 게시물입니다.' } }, 400)
+    );
+    await expect(
+      deleteThreadsPost({ accessToken: 'token', postId: 'post-1' })
+    ).rejects.toThrow('이미 삭제된 게시물입니다.');
   });
 });

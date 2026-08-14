@@ -93,7 +93,10 @@ const REFRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 // 요청의 상한이 약 90초라, 이 시간까지 버티는 요청은 존재할 수 없다(3배 이상 여유).
 const PUBLISH_CLAIM_STALE_MS = 5 * 60 * 1000;
 
-async function defaultEnsureFreshToken(account: ThreadsAccountInfo): Promise<string> {
+// export하는 이유: "테스트 게시"(설정 화면, 어떤 Profile과도 무관)도 실제 게시와 똑같은
+// 토큰 갱신 판단이 필요하다. 두 번째 호출부가 생겨서야 뽑아냈다 — 그전까지는 이 파일 안의
+// 유일한 사용처였다.
+export async function ensureFreshThreadsToken(account: ThreadsAccountInfo): Promise<string> {
   const now = Date.now();
   if (account.tokenExpiresAt.getTime() <= now) {
     throw new Error('Threads 토큰이 만료되었습니다.');
@@ -139,7 +142,7 @@ export async function publishToThreads(id: string, deps: PublishDeps = {}): Prom
     return { ok: false, status: 400, error: 'Threads 연결이 필요합니다. 설정에서 연결해 주세요.' };
   }
 
-  const ensureFreshToken = deps.ensureFreshToken ?? defaultEnsureFreshToken;
+  const ensureFreshToken = deps.ensureFreshToken ?? ensureFreshThreadsToken;
   let accessToken: string;
   try {
     accessToken = await ensureFreshToken(account);

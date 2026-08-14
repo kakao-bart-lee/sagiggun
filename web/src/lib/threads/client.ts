@@ -6,7 +6,9 @@ export class ThreadsApiError extends Error {
 }
 
 const REQUEST_TIMEOUT_MS = 10_000;
-const SCOPES = 'threads_basic,threads_content_publish';
+// threads_delete는 설정 화면의 "테스트 게시" 글을 지우는 데만 쓴다. 이미 연결된 계정의
+// 토큰에는 이 권한이 없으므로, 이 값을 바꾼 뒤에는 연결 해제 후 재연결해야 반영된다.
+const SCOPES = 'threads_basic,threads_content_publish,threads_delete';
 
 function threadsErrorMessage(data: Record<string, unknown>, status: number): string {
   if (typeof data.error_message === 'string') return data.error_message;
@@ -183,4 +185,18 @@ export async function publishThreadsPost(args: {
     if (attempt < MAX_PUBLISH_ATTEMPTS) await delay(PUBLISH_POLL_DELAY_MS);
   }
   throw new ThreadsApiError('Threads 게시가 시간 내에 완료되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+}
+
+export async function deleteThreadsPost(args: {
+  accessToken: string;
+  postId: string;
+}): Promise<string> {
+  const url = new URL(`https://graph.threads.net/v1.0/${args.postId}`);
+  url.searchParams.set('access_token', args.accessToken);
+  const response = await fetch(url.toString(), {
+    method: 'DELETE',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  const data = await parseJsonOrThrow(response);
+  return typeof data.deleted_id === 'string' ? data.deleted_id : args.postId;
 }
