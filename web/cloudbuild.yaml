@@ -19,6 +19,8 @@ substitutions:
   _LLM_PROVIDER: openai
   _LLM_MODEL: gpt-5.6-luna
   _LLM_REASONING: high
+  _THREADS_APP_ID: "1807216223981721"
+  _THREADS_REDIRECT_URI: https://love.nngn.ai/api/admin/threads/callback
 
 steps:
   - name: "bash"
@@ -60,8 +62,8 @@ steps:
           --cpu-boost \
           --service-account=${_SA}@$PROJECT_ID.iam.gserviceaccount.com \
           --add-cloudsql-instances=$PROJECT_ID:${_REGION}:${_SQL_INSTANCE} \
-          --set-env-vars=NODE_ENV=production,GCP_PROJECT_ID=$PROJECT_ID,LLM_CONFIG_SECRET=${_SERVICE}-llm-config,LLM_MODE=${_LLM_MODE},LLM_PROVIDER=${_LLM_PROVIDER},LLM_MODEL=${_LLM_MODEL},LLM_REASONING=${_LLM_REASONING},PHOTO_DIR=/tmp/photos,PHOTO_BUCKET=${_SERVICE}-photos \
-          --set-secrets=DATABASE_URL=${_SERVICE}-database-url:latest,ADMIN_PASSWORD=${_SERVICE}-admin-password:latest,SESSION_SECRET=${_SERVICE}-session-secret:latest,ANTHROPIC_API_KEY=${_SERVICE}-anthropic-api-key:latest,OPENAI_API_KEY=${_SERVICE}-openai-api-key:latest,OPS_API_TOKEN=${_SERVICE}-ops-api-token:latest
+          --set-env-vars=NODE_ENV=production,GCP_PROJECT_ID=$PROJECT_ID,LLM_CONFIG_SECRET=${_SERVICE}-llm-config,LLM_MODE=${_LLM_MODE},LLM_PROVIDER=${_LLM_PROVIDER},LLM_MODEL=${_LLM_MODEL},LLM_REASONING=${_LLM_REASONING},PHOTO_DIR=/tmp/photos,PHOTO_BUCKET=${_SERVICE}-photos,THREADS_APP_ID=${_THREADS_APP_ID},THREADS_REDIRECT_URI=${_THREADS_REDIRECT_URI} \
+          --set-secrets=DATABASE_URL=${_SERVICE}-database-url:latest,ADMIN_PASSWORD=${_SERVICE}-admin-password:latest,SESSION_SECRET=${_SERVICE}-session-secret:latest,ANTHROPIC_API_KEY=${_SERVICE}-anthropic-api-key:latest,OPENAI_API_KEY=${_SERVICE}-openai-api-key:latest,OPS_API_TOKEN=${_SERVICE}-ops-api-token:latest,THREADS_APP_SECRET=${_SERVICE}-threads-app-secret:latest
     timeout: 300s
 
 options:
