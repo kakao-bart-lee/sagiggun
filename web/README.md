@@ -34,13 +34,51 @@ pnpm dev
 
 ## Threads API 연동 (최초 1회)
 
-1. [Meta for Developers](https://developers.facebook.com)에서 앱 생성 → "Threads API" 제품 추가.
-2. 앱 설정에 redirect URI로 배포 도메인의 `/api/admin/threads/callback`을 등록
-   (예: `https://<도메인>/api/admin/threads/callback`).
-3. 발급된 App ID/App Secret을 `.env`의 `THREADS_APP_ID`/`THREADS_APP_SECRET`에, redirect URI를
-   `THREADS_REDIRECT_URI`에 그대로 넣는다.
-4. 관리자 로그인 후 `/admin/settings`의 "Threads 연동"에서 "Threads 연결"을 눌러 OAuth를 완료한다.
+Meta 대시보드 UI가 함정이 많다. 아래 순서와 괄호 안 주의사항을 그대로 따른다.
+
+1. [Meta for Developers](https://developers.facebook.com)에서 앱 생성 → 왼쪽 메뉴 **"이용
+   사례"** → **"Access the Threads API"** 추가 → 그 이용 사례의 **"설정"** 화면에서
+   **리디렉션 콜백 URL·제거 콜백 URL·삭제 콜백 URL 세 칸을 전부** 채운다. 하나라도 비면
+   폼 전체가 조용히 저장 실패한다(에러 문구도 안 뜬다). 이 앱은 제거·삭제 콜백을 아직
+   구현하지 않았으므로(호출되면 404) 개발 모드 테스트에는 형식만 맞는 URL이면 된다 — 실제
+   심사 단계에서는 두 엔드포인트 구현이 필요하다.
+   **리디렉션 콜백 URL은 타이핑 후 반드시 아래 뜨는 드롭다운을 클릭해서 선택해야 값이
+   등록된다.** 타이핑만 하고 다른 곳을 클릭하면 화면엔 채워진 것처럼 보이지만 저장 시
+   "Redirect URIs: OAuth 리디렉션 URI를 지정해주세요" 오류가 난다.
+2. 같은 앱에 **"Facebook 로그인"**(또는 "비즈니스용 Facebook 로그인") 제품이 함께 있어야
+   하고, 그 제품의 **설정 → 클라이언트 OAuth 설정**에서 **웹 OAuth 로그인**을 켜고 **유효한
+   OAuth 리디렉션 URI**에 1번과 같은 콜백 URL을 등록한다(이것도 드롭다운에서 선택). Threads는
+   이 제품의 OAuth 인프라를 같이 쓰므로 여기가 비어 있으면 실제 인증 시 "URL Blocked" 오류가
+   난다. **앱 설정 → 기본 설정 → 앱 도메인**에는 프로토콜 없이 도메인만 넣는다
+   (`example.com`, `https://example.com`은 안 됨 — 넣으면 1번 저장이 계속 실패한다).
+3. 앱이 **개발 모드**인 동안은 테스트 계정을 이용 사례 설정 화면의 **"Threads 테스터 추가
+   또는 삭제"**로 등록해야 한다. 등록만으로는 부족하고, 그 계정으로 **Threads.net(웹 버전)
+   → 설정 → 계정 → 웹사이트 권한**에서 초대를 직접 수락해야 한다 — 초대 알림이 따로 오지
+   않아 놓치기 쉽다. 수락 전에는 "The user has not accepted the invite to test the app" 오류가
+   난다.
+4. **Meta는 `localhost` redirect URI를 지원하지 않는다.** 로컬에서 전체 흐름을 테스트하려면
+   ngrok 등으로 `https` 터널을 열어 그 주소를 1~3단계에 등록한다(`ngrok http 3000` → 뜨는
+   `https://*.ngrok-free.dev` 주소 사용; 터널을 재시작하면 주소가 바뀌므로 Meta 설정도 다시
+   등록해야 한다). 터널로 접속할 때는 `.env`의 `DEV_TUNNEL_HOST`에 그 호스트를 넣어야
+   `next dev`가 정적 자산·HMR 요청을 다른 호스트라는 이유로 차단하지 않는다
+   (`next.config.ts`의 `allowedDevOrigins` 참고 — 값이 없으면 기본 동작 그대로라 운영에는
+   영향 없음).
+5. 발급된 App ID/App Secret을 `.env`의 `THREADS_APP_ID`/`THREADS_APP_SECRET`에, 위에서 등록한
+   콜백 URL을 `THREADS_REDIRECT_URI`에 그대로 넣는다.
+6. 관리자 로그인 후 `/admin/settings`의 "Threads 연동"에서 "Threads 연결"을 눌러 OAuth를 완료한다.
    이후 앱이 장기 토큰을 보관·자동 갱신한다.
+
+### 운영 배포(`love.nngn.ai`)에서 연동할 때
+
+- Meta에 등록하는 redirect URI는 Cloud Run의 `*.run.app` 원본 주소가 아니라 **캐노니컬
+  도메인**을 쓴다: `https://love.nngn.ai/api/admin/threads/callback`. `THREADS_REDIRECT_URI`도
+  이 값으로 설정한다.
+- 참고로 앞단 Cloudflare Worker(`cloudflare/worker/src/index.ts`)는 origin(Cloud Run)에 요청을
+  넘길 때 `Host` 헤더를 origin 도메인으로 바꿔 보내고, origin이 돌려준 리다이렉트의 `Location`이
+  origin 호스트를 가리키면 `love.nngn.ai`로 재작성해서 돌려준다. Threads 콜백 라우트는
+  `request.url`이 아니라 `THREADS_REDIRECT_URI`의 origin으로 직접 리다이렉트를 만들어서 이
+  프록시 동작에 기대지 않는다 — 로컬 ngrok 터널처럼 이런 재작성이 없는 환경에서 `request.url`을
+  기준으로 삼으면 내부 호스트로 잘못 리다이렉트되는 걸 실제로 겪었다.
 
 ## 관심 문의 (인바운드 매칭)
 
