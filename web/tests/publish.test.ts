@@ -7,6 +7,13 @@ import type { ThreadsAccountInfo } from '@/lib/threads/account';
 function fakeProfile(partial: Partial<Profile> & { id: string; status: Status }): Profile {
   return {
     seq: null,
+    faceType: null,
+    partnerFaceTypes: [],
+    partnerHeightMin: null,
+    partnerHeightMax: null,
+    smoking: null,
+    tattoo: null,
+    drinking: null,
     sourceHandle: 'x',
     rawText: 'raw',
     gender: null,

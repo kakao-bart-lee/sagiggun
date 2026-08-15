@@ -1,0 +1,192 @@
+import { describe, it, expect } from 'vitest';
+import { scoreDirection, harmonic, scorePair, type ScoreSlice } from '@/lib/match/score';
+
+function p(extra: Partial<ScoreSlice> = {}): ScoreSlice {
+  return {
+    id: 'x',
+    seq: null,
+    sourceHandle: 'x',
+    status: 'PUBLISHED',
+    gender: null,
+    birthYear: 1995,
+    region: null,
+    heightCm: null,
+    faceType: null,
+    partnerFaceTypes: [],
+    partnerHeightMin: null,
+    partnerHeightMax: null,
+    job: null,
+    hobbies: [],
+    appealPoints: [],
+    idealType: [],
+    partnerBirthYearMin: null,
+    partnerBirthYearMax: null,
+    partnerRegions: [],
+    dealBreakers: [],
+    ...extra,
+  };
+}
+
+const dim = (d: ReturnType<typeof scoreDirection>, name: string) =>
+  d.parts.find((x) => x.dim === name)!;
+
+describe('scoreDirection', () => {
+  it('나이가 구간 안이면 만점이다', () => {
+    const me = p({ partnerBirthYearMin: 1990, partnerBirthYearMax: 2000 });
+    const other = p({ birthYear: 1995 });
+    expect(dim(scoreDirection(me, other), '나이')).toMatchObject({ score: 1, state: 'match' });
+  });
+
+  it('나이가 벗어나면 벗어난 만큼만 깎는다 — 0으로 떨어뜨리지 않는다', () => {
+    const me = p({ partnerBirthYearMin: 1990, partnerBirthYearMax: 2000 });
+    const other = p({ birthYear: 2003 }); // 3년 초과
+    const age = dim(scoreDirection(me, other), '나이');
+    expect(age.state).toBe('miss');
+    expect(age.score).toBeCloseTo(0.5, 5); // 1 - 3/6
+  });
+
+  it('조건을 안 적었으면 중립이고 미상으로 표시한다', () => {
+    const me = p({ partnerBirthYearMin: null, partnerBirthYearMax: null });
+    const age = dim(scoreDirection(me, p({ birthYear: 1995 })), '나이');
+    expect(age.state).toBe('unknown');
+    expect(age.score).toBe(0.6);
+  });
+
+  it('상대의 값을 모르면 미상이다 — 맞는다고 보지 않는다', () => {
+    const me = p({ partnerRegions: ['서울'] });
+    const other = p({ region: null });
+    expect(dim(scoreDirection(me, other), '지역').state).toBe('unknown');
+  });
+
+  it('지역이 겹치면 만점, 어긋나면 크게 깎는다', () => {
+    const me = p({ partnerRegions: ['서울'] });
+    expect(dim(scoreDirection(me, p({ region: '서울 강남' })), '지역').score).toBe(1);
+    expect(dim(scoreDirection(me, p({ region: '부산' })), '지역').score).toBeLessThan(0.3);
+  });
+
+  it('키·얼굴상 필드가 아직 없으면 미상으로 둔다', () => {
+    const d = scoreDirection(p(), p());
+    expect(dim(d, '키').state).toBe('unknown');
+    expect(dim(d, '얼굴상').state).toBe('unknown');
+  });
+
+  it('키 조건이 들어오면 바로 채점한다', () => {
+    const me = p({ partnerHeightMin: 175, partnerHeightMax: null });
+    expect(dim(scoreDirection(me, p({ heightCm: 180 })), '키')).toMatchObject({
+      score: 1,
+      state: 'match',
+    });
+    const short = dim(scoreDirection(me, p({ heightCm: 169 })), '키');
+    expect(short.state).toBe('miss');
+    expect(short.score).toBeCloseTo(0.5, 5); // 1 - 6/12
+  });
+
+  it('원하는 얼굴상과 겹치면 만점이다', () => {
+    const me = p({ partnerFaceTypes: ['고양이상', '여우상'] });
+    expect(dim(scoreDirection(me, p({ faceType: '고양이상' })), '얼굴상').score).toBe(1);
+    expect(dim(scoreDirection(me, p({ faceType: '곰상' })), '얼굴상').state).toBe('miss');
+  });
+
+  it('전부 맞으면 1.0이다', () => {
+    const me = p({
+      partnerBirthYearMin: 1990,
+      partnerBirthYearMax: 2000,
+      partnerHeightMin: 170,
+      partnerHeightMax: null,
+      partnerFaceTypes: ['고양이상'],
+      partnerRegions: ['서울'],
+    });
+    const other = p({ birthYear: 1995, heightCm: 178, faceType: '고양이상', region: '서울' });
+    expect(scoreDirection(me, other).score).toBeCloseTo(1, 5);
+  });
+});
+
+describe('harmonic', () => {
+  it('한쪽이 0이면 0이다 — 한쪽만 좋은 짝은 짝이 아니다', () => {
+    expect(harmonic(0.9, 0)).toBe(0);
+    expect(harmonic(0, 0.9)).toBe(0);
+  });
+
+  it('양쪽이 같으면 그 값 그대로다', () => {
+    expect(harmonic(0.8, 0.8)).toBeCloseTo(0.8, 5);
+  });
+
+  it('비대칭을 산술평균보다 세게 깎는다', () => {
+    const a = 0.9;
+    const b = 0.1;
+    expect(harmonic(a, b)).toBeCloseTo(0.18, 2);
+    expect(harmonic(a, b)).toBeLessThan((a + b) / 2);
+  });
+});
+
+describe('scorePair', () => {
+  it('양방향을 각각 재고 조화평균으로 묶는다', () => {
+    // 나만 상대를 원하고, 상대는 나를 원하지 않는 짝
+    const me = p({ id: 'me', birthYear: 1990, partnerBirthYearMin: 1994, partnerBirthYearMax: 1998 });
+    const you = p({ id: 'you', birthYear: 1996, partnerBirthYearMin: 1996, partnerBirthYearMax: 2000 });
+
+    const r = scorePair(me, you);
+    expect(r.mine).toBeGreaterThan(r.theirs); // 내 조건엔 맞는데
+    expect(r.harmonic).toBeLessThan(r.mine); // 짝 점수는 낮은 쪽으로 끌려간다
+    expect(r.harmonic).toBeLessThan((r.mine + r.theirs) / 2);
+  });
+
+  it('방향을 바꿔도 짝 점수는 같다', () => {
+    const a = p({ id: 'a', birthYear: 1993, partnerBirthYearMin: 1995, partnerBirthYearMax: 1999 });
+    const b = p({ id: 'b', birthYear: 1997, partnerBirthYearMin: 1990, partnerBirthYearMax: 1994 });
+    expect(scorePair(a, b).harmonic).toBeCloseTo(scorePair(b, a).harmonic, 10);
+  });
+});
+
+describe('DimScore 표시값', () => {
+  it('조건과 상대의 실제 값을 사람이 읽을 문장으로 함께 준다', () => {
+    const me = p({ partnerBirthYearMin: 1994, partnerBirthYearMax: 1999 });
+    const age = dim(scoreDirection(me, p({ birthYear: 1996 })), '나이');
+    expect(age.want).toBe('1994~1999년생');
+    expect(age.has).toBe('1996년생');
+  });
+
+  it('한쪽만 있는 구간은 이상/이하로 쓴다', () => {
+    const tall = p({ partnerHeightMin: 175, partnerHeightMax: null });
+    expect(dim(scoreDirection(tall, p({ heightCm: 180 })), '키').want).toBe('175cm 이상');
+    const short = p({ partnerHeightMin: null, partnerHeightMax: 165 });
+    expect(dim(scoreDirection(short, p({ heightCm: 160 })), '키').want).toBe('165cm 이하');
+  });
+
+  it('조건이 없으면 want가 없고, 상대 값을 모르면 has가 없다', () => {
+    const noCond = dim(scoreDirection(p(), p({ birthYear: 1996 })), '나이');
+    expect(noCond.want).toBeNull();
+    expect(noCond.has).toBe('1996년생');
+
+    const noVal = dim(scoreDirection(p({ partnerRegions: ['서울'] }), p({ region: null })), '지역');
+    expect(noVal.want).toBe('서울'); // 「쪽」은 붙이지 않는다 — 「수도권쪽」이 되면 어색하다
+    expect(noVal.has).toBeNull();
+  });
+
+  it('얼굴상은 여러 개를 모아 쓴다', () => {
+    const me = p({ partnerFaceTypes: ['고양이상', '여우상'] });
+    const face = dim(scoreDirection(me, p({ faceType: '곰상' })), '얼굴상');
+    expect(face.want).toBe('고양이상·여우상');
+    expect(face.has).toBe('곰상');
+  });
+});
+
+describe('지역 판정은 광역 관계를 안다', () => {
+  it('대구 사람은 「경상도권」을 원하는 사람에게 맞는다', () => {
+    const wantsGyeongsang = p({ partnerRegions: ['경상도권 여성분 선호합니다.'] });
+    const daegu = p({ region: '대구' });
+    expect(dim(scoreDirection(wantsGyeongsang, daegu), '지역').state).toBe('match');
+  });
+
+  it('찾는 지역을 문장이 아니라 지명으로 보여준다', () => {
+    const wantsGyeongsang = p({ partnerRegions: ['경상도권 여성분 선호합니다.'] });
+    expect(dim(scoreDirection(wantsGyeongsang, p({ region: '대구' })), '지역').want).toBe('경상');
+  });
+
+  it('「장거리 가능해요!」는 미상이 아니라 맞음이다 — 유연한 사람이 손해 보지 않는다', () => {
+    const anywhere = p({ partnerRegions: ['장거리 가능해요!'] });
+    const region = dim(scoreDirection(anywhere, p({ region: '부산' })), '지역');
+    expect(region.state).toBe('match');
+    expect(region.want).toBe('어디든');
+  });
+});

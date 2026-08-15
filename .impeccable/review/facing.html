@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>소개할 사람 고르기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --ink:#1c1f24; --ink-el:#262a31; --card:#e4e2de; --field:#eceae6;
+  --on-card:#2f3338; --muted:#5c6168; --fog:#c8c6c2; --fog-muted:#8b9098;
+  --edge:#3d424a; --line:#c5cdd8; --thumb:#cfcbc6;
+  /* DESIGN.md의 면(surface)별 쌍. 종이용 색을 숯색 위에 칠하면 2.2:1까지 떨어진다 — 면마다 짝이 따로 있다. */
+  --m-paper:#1f4fa8; --f-paper:#b3243f;   /* 종이 위 */
+  --m-ink:#6a99f1;   --f-ink:#ea6a80;     /* 숯색 위 */
+  --stamp:#e6d05a;   /* 숯색 위에서만 쓰는 CTA 노랑 */
+  --hair:#8b9098;    /* 숯색 위 컨트롤 경계 — edge(1.64:1)는 테두리로 쓰기엔 너무 옅다 */
+  --ring:#6a99f1;
+  --turn:520ms cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box}
+::selection{background:var(--ring);color:var(--card)}
+html{scrollbar-color:var(--edge) var(--ink)}
+body{margin:0;background:var(--ink);color:var(--fog);caret-color:var(--ring);
+  font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  font-size:14px;font-weight:500;line-height:1.5;-webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums}
+:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ring);border-radius:6px}
+.wrap{max-width:78rem;margin:0 auto;padding:22px 20px 40px}
+
+/* ── 머리 ─────────────────────────────────── */
+.top{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end;justify-content:space-between;
+  padding-bottom:14px;border-bottom:2px solid var(--edge)}
+h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.015em;display:flex;align-items:center;gap:7px}
+.pick{display:flex;flex-direction:column;gap:4px}
+.pick label{font-size:11px;font-weight:800;color:var(--fog-muted)}
+select{background:var(--field);color:var(--on-card);border:2px solid var(--edge);border-radius:8px;
+  padding:9px 11px;min-height:42px;font:inherit;font-weight:700;min-width:236px}
+
+/* ── 후보 레일 ────────────────────────────── */
+.rail{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:2px solid var(--edge)}
+.rail .strip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 10px 2px 2px;flex:1}
+.rail .strip::-webkit-scrollbar{display:none}
+.tick{flex:none;min-width:46px;height:38px;border:2px solid var(--hair);border-radius:8px;
+  background:transparent;color:var(--fog);font:inherit;font-size:14px;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
+.tick:hover{border-color:var(--fog)}
+.tick[aria-current=true]{background:var(--card);color:var(--on-card);border-color:var(--card)}
+.tick.gone{opacity:.4}
+.tick.gone span{text-decoration:line-through}
+/* seal은 tick이 놓인 면을 따라간다. 선택된 tick은 배경이 종이라, 노랑을 그대로 두면 1.2:1이 된다. */
+.tick .seal{color:var(--stamp)}
+.tick[aria-current=true] .seal{color:var(--on-card)}
+.step{flex:none;width:38px;height:38px;border:2px solid var(--hair);border-radius:8px;background:transparent;
+  color:var(--fog);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.step:hover:not(:disabled){border-color:var(--fog)}
+.step:disabled{opacity:.3;cursor:default}
+.railmeta{font-size:11px;font-weight:800;color:var(--fog-muted);white-space:nowrap}
+
+/* ── 판정 머릿줄 ──────────────────────────── */
+.verdict{display:flex;align-items:center;gap:12px;padding:20px 0 16px}
+.vtext{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1.2;color:var(--fog)}
+.vsub{font-size:14px;font-weight:600;color:var(--fog-muted);margin:-8px 0 16px;max-width:62ch}
+
+/* ── 맞대기 ───────────────────────────────── */
+.sheet{display:grid;gap:12px;grid-template-columns:1fr}
+/* 세 칸이 같은 높이여야 한 장의 시트로 읽힌다 — start면 가운데가 죽은 공간이 된다.
+   DOM은 기준 → 후보 → 척추 순(폰의 읽는 순서). 데스크톱에서만 order로 척추를 가운데 놓는다 —
+   반대로 하면 폰에서 눈과 스크린리더가 다른 순서를 본다. */
+@media(min-width:900px){
+  .sheet{grid-template-columns:1fr 232px 1fr;align-items:stretch}
+  .card.you{order:1} .spine{order:2} .card.them{order:3}
+}
+.card{background:var(--card);color:var(--on-card);border:2px solid var(--edge);border-radius:12px;padding:17px}
+/* 기준 인물은 월드의 selected 어휘(파랑 2px)로 표시한다 — 테두리를 지우는 게 아니라. */
+.card.you{border-color:var(--m-ink)}
+.card.you.her{border-color:var(--f-ink)}
+.chead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cno{font-size:22px;font-weight:800;line-height:1;letter-spacing:-.025em}
+.sex{display:inline-flex;align-items:center;font-size:11px;font-weight:800;border:2px solid;
+  border-radius:9999px;padding:2px 9px}
+.sex.m{color:var(--m-paper)} .sex.f{color:var(--f-paper)}   /* 종이 위 */
+.role{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--muted)}
+.line{margin:11px 0 0;font-size:14px;color:var(--muted);font-weight:600}
+.card dl{margin:14px 0 0;padding-top:12px;border-top:2px solid var(--line)}
+.card dt{font-size:11px;font-weight:800;color:var(--muted);margin-top:11px;letter-spacing:.02em}
+.card dt:first-child{margin-top:0}
+.card dd{margin:2px 0 0;font-size:14px;font-weight:700;display:flex;align-items:center;
+  flex-wrap:wrap;gap:4px 8px}
+.card dd.miss{color:var(--muted)}
+/* 상대의 실제 값 — 조건이 왜 맞는지/안 맞는지의 근거 */
+.has{margin-left:auto;font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+.card dd.miss .has{color:var(--on-card)}
+.blank{color:var(--muted);font-weight:600}
+/* 조건이 적힌 줄에서 바로 맞는지 말한다. 종이 위 dark chip은 월드가 허용하는 어휘.
+   충족은 채운 도장, 불충족은 빈 도장 — 색이 아니라 채움으로 가른다(색은 사람 몫). */
+.mk{flex:none;width:21px;height:21px;border-radius:9999px;border:2px solid var(--on-card);
+  display:inline-flex;align-items:center;justify-content:center}
+.mk.ok{background:var(--on-card);color:var(--card)}
+.mk.no{background:transparent;color:var(--on-card)}
+.mk.un{border-style:dashed;border-color:var(--muted);color:var(--muted)}
+/* 접힌 카드에서도 충족 여부는 남는다 — 후보마다 달라지는 정보라 숨기면 안 된다 */
+.foldsum{display:none;flex-wrap:wrap;gap:6px 14px;margin-top:12px;padding-top:12px;
+  border-top:2px solid var(--line)}
+.card.you.folded .foldsum{display:flex}
+.fs{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--muted)}
+
+/* 척추 — 두 카드를 잇는 홈. 판을 하나 더 얹으면 잇는 게 아니라 사이에 끼는 게 된다. */
+.spine{padding:4px 14px 0}
+.spine h2{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--fog-muted);margin:0 0 13px;
+  display:flex;align-items:center;gap:6px}
+.beam{margin-bottom:14px}
+.bl{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;font-weight:700;
+  color:var(--fog);margin-bottom:6px}
+.bl b{color:var(--fog);font-weight:800;font-size:14px}
+.bar{display:block;height:13px;background:var(--ink-el);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px}
+.bar i.m{background:var(--m-ink)} .bar i.f{background:var(--f-ink)}   /* 숯색 위 */
+.spine .note{margin-top:15px;padding-top:14px;border-top:2px solid var(--edge)}
+.spine .nk{font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--fog-muted);margin-bottom:6px}
+.spine .nv{font-size:14px;font-weight:600;color:var(--fog);line-height:1.55}
+
+/* ── 아래 띠 ──────────────────────────────── */
+.bottom{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px;
+  padding-top:16px;border-top:2px solid var(--edge)}
+.act{font:inherit;font-size:15px;font-weight:700;cursor:pointer;min-height:46px;padding:11px 20px;
+  border-radius:10px;border:2px solid var(--fog-muted);background:transparent;color:var(--fog);
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}
+.act:hover{background:var(--fog);color:var(--ink);border-color:var(--fog)}
+/* 주 동작은 월드의 stamp 언어를 쓴다. 노랑이 탁해졌던 건 종이 위에서였고, 숯색 위에서는 이 색이 원래 자리다. */
+.act.go{background:var(--ink-el);color:var(--stamp);border-color:var(--stamp);
+  box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--stamp)}
+.act.go:hover{background:var(--stamp);color:var(--ink);border-color:var(--stamp)}
+/* 거절은 목록을 실제로 바꾸는 유일한 동작이라 등급이 낮아야 한다. 글자가 5.15:1로 어포던스를 진다. */
+.act.quiet{border-color:var(--edge);color:var(--fog-muted)}
+.act.quiet:hover{background:var(--edge);color:var(--fog);border-color:var(--edge)}
+/* 상태는 월드의 status-seal 어휘 — 채운 블록이 아니라 링. 동작 버튼과 헷갈리면 안 되므로
+   아이콘을 떼고 라벨도 버튼과 다르게 쓴다. */
+.done{display:inline-flex;align-items:center;min-height:46px;font-size:14px;font-weight:800;
+  color:var(--stamp);background:var(--ink-el);border:2px solid var(--stamp);
+  border-radius:9999px;padding:11px 22px}
+/* 답이 온 상태는 밝은 중립 링. 종이 채움을 쓰면 카드·현재 tick과 함께 종이가 세 가지를 뜻하게 된다. */
+.done.sealed{color:var(--fog);border-color:var(--fog)}
+.spacer{flex:1}
+
+/* ── 도움말 ───────────────────────────────── */
+.q{width:18px;height:18px;flex:none;border:0;background:transparent;padding:0;cursor:help;
+  color:var(--fog-muted);display:inline-flex}
+.q:hover{color:var(--fog)}
+.card .q,.q.pale{color:var(--muted)} .card .q:hover{color:var(--on-card)}
+#pop{position:fixed;z-index:60;max-width:288px;opacity:0;pointer-events:none;transition:opacity .12s;
+  background:var(--card);color:var(--on-card);border:2px solid var(--card);border-radius:8px;
+  padding:11px 13px;font-size:14px;font-weight:600;line-height:1.6}
+#pop.show{opacity:1}
+#pop b{font-weight:800}
+
+/* 넘김 — 이 화면의 유일한 연출 */
+.turning .card.them,.turning .spine{opacity:0;transform:translateX(var(--dir,14px))}
+.card.them,.spine{transition:opacity var(--turn),transform var(--turn)}
+.empty{background:var(--card);color:var(--muted);border:2px solid var(--edge);border-radius:12px;
+  padding:24px;font-weight:600}
+@media(prefers-reduced-motion:reduce){
+  *{transition:none!important}
+  .turning .card.them,.turning .spine{opacity:1;transform:none}
+}
+/* 접기 — 폰에서는 기준 인물이 상수라 매번 스크롤로 지나칠 이유가 없다 */
+.fold{display:none}
+@media(max-width:899px){
+  /* 하단 고정 바(44*2 + 8 + 20) + 노치 여백. 이걸 빼먹으면 카드 끝이 바 밑에 깔린다. */
+  .wrap{padding:16px 14px calc(148px + env(safe-area-inset-bottom))}
+  .card.you{padding:14px}
+  .card.you.folded dl,.card.you.folded .gapline{display:none}
+  .card.you.folded .line{margin-top:8px}
+  .fold{display:inline-flex;align-items:center;gap:5px;margin-top:12px;padding:8px 12px;min-height:38px;
+    font:inherit;font-size:11px;font-weight:800;cursor:pointer;
+    border:2px solid var(--line);border-radius:8px;background:transparent;color:var(--muted)}
+  .fold:hover{background:var(--line);color:var(--on-card)}
+  .vtext{font-size:22px}
+  .verdict{padding:14px 0 10px}
+  .vsub{margin:-4px 0 12px}
+  /* 폰은 DOM 순서 그대로 — 기준(접힘) → 후보 → 척추. 그래야 맞대기가 첫 화면에 들어오고
+     눈과 스크린리더가 같은 순서를 본다. */
+  .spine{padding:2px 2px 0}
+  .bottom{position:fixed;left:0;right:0;bottom:0;margin:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    background:var(--ink);border-top:2px solid var(--edge);z-index:20;
+    display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .act[data-a=asked],.done{grid-column:1 / -1}
+  .act{font-size:14px;padding:11px 8px;min-height:44px}
+  .spacer{display:none}
+}
+</style>
+</head>
+<body>
+<!--
+THESIS: 소개는 두 사람을 맞대놓고 보는 일. 후보를 줄 세운 목록이 아니라 한 번에 한 짝을 마주 놓는 대조판이다. 랭킹 리스트 배열을 거부한다.
+OWN-WORLD: Some Love Admin 고정 — 숯색 바탕 #1c1f24, 종이 카드 #e4e2de, 2px 테두리, 그림자 없음, Pretendard 700–800. 색은 사람만 가리킨다: 남 #1f4fa8 / 여 #b3243f.
+STORY: 운영자가 기준 인물을 고르고, 후보를 한 명씩 맞대보며 판정을 읽고, 물어볼지 접을지 정한다.
+FIRST VIEWPORT: 위 레일에 후보 번호, 아래 판정 한 줄, 그 아래 두 종이 카드가 마주 보고 가운데 척추가 맞물림을 잇는다. 폰에서는 기준 카드가 접히고 동작 버튼이 하단 고정.
+FORM: 짝 대조 시트 — 내 순위 3위, seed 2f1c28d4.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="i-help"><circle cx="9" cy="9" r="7.4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M6.9 6.9a2.1 2.1 0 1 1 2.6 2.05v1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="9" cy="13" r="1" fill="currentColor"/></g>
+  <g id="i-prev"><path d="M11.5 4.5 6.5 9.5l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-next"><path d="M6.5 4.5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-ask"><path d="M3 5.5h12v8H8.5L5 16.5V13.5H3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></g>
+  <g id="i-yes"><path d="M3.5 9.5l4 4 8-8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-no"><path d="M5 5l8 8M13 5l-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
+  <g id="i-dash"><path d="M5 9h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
+  <g id="i-undo"><path d="M4 9.5h7.5a3.5 3.5 0 1 1 0 7H7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6.8 6.3 3.6 9.5l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-crowd"><path d="M9 3.2 16.2 15H1.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M9 7.6v3.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="9" cy="12.9" r=".95" fill="currentColor"/></g>
+</defs></svg>
+
+<div class="wrap">
+  <div class="top">
+    <h1>소개할 사람 고르기
+      <button class="q" data-help="두 사람의 조건이 <b>서로</b> 맞는지 양쪽으로 따집니다. 한쪽만 좋은 짝은 뒤로 밀립니다.<br><br>나이·키·얼굴상·지역 네 가지만 봅니다. 사진과 흡연 여부는 아직 안 봅니다.<br><br>「안 적으셨어요」는 조건이 없다는 뜻이지 맞는다는 뜻이 아닙니다."
+        aria-label="이 화면 설명"><svg width="18" height="18" viewBox="0 0 18 18"><use href="#i-help"/></svg></button>
+    </h1>
+    <div class="pick">
+      <label for="subj">누구에게 소개할까요?</label>
+      <select id="subj"></select>
+    </div>
+  </div>
+
+  <nav class="rail" aria-label="후보 넘기기">
+    <button class="step" id="prev" aria-label="이전 후보"><svg width="18" height="18" viewBox="0 0 18 18"><use href="#i-prev"/></svg></button>
+    <div class="strip" id="strip" role="tablist"></div>
+    <button class="step" id="next" aria-label="다음 후보"><svg width="18" height="18" viewBox="0 0 18 18"><use href="#i-next"/></svg></button>
+    <span class="railmeta" id="railmeta"></span>
+  </nav>
+
+  <div id="stage"></div>
+</div>
+
+<div id="pop" role="tooltip"></div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const BY = Object.fromEntries(DATA.map(d => [d.index, d]));
+const mark = {};                    // "5-17" → asked | accepted | declined
+const key = (a,b) => `${a}-${b}`;
+let at = 0;                         // 현재 후보 위치
+let folded = matchMedia('(max-width:899px)').matches;   // 폰에서는 기준 카드를 접고 시작
+
+const REAL_MISS = .7, HARD_MISS = .5;
+const sexC = g => g === 'female' ? 'f' : 'm';
+const sexK = g => g === 'female' ? '여' : '남';
+const other = g => g === 'female' ? 'male' : 'female';
+const ico = (id, s=18) => `<svg width="${s}" height="${s}" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const help = (t, pale) => `<button class="q${pale?' pale':''}" data-help="${t.replace(/"/g,'&quot;')}" aria-label="설명">${ico('help')}</button>`;
+
+function josa(w,a,b){const c=w.charCodeAt(w.length-1);
+  return w+((c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28)?a:b);}
+function wantText(dim,w){
+  if(!w) return null;
+  if(Array.isArray(w)) return w.join('·')+(dim==='지역'?'쪽':'');
+  if(dim==='나이'){ if(w.lo==null)return `${w.hi}년생까지`; if(w.hi==null)return `${w.lo}년생부터`;
+    return `${w.lo}~${w.hi}년생`; }
+  if(w.lo==null) return `${w.hi}cm 이하`;
+  if(w.hi==null) return `${w.lo}cm 이상`;
+  return `${w.lo}~${w.hi}cm`;
+}
+/* 조건이 적힌 그 줄에서 바로 충족 여부를 말한다.
+   parts = 이 카드 주인의 조건을 상대에게 대본 결과. */
+function condMark(parts, dim, ownerNo, aboutNo){
+  const p = (parts||[]).find(x => x.dim === dim);
+  if(!p) return {chip:'', miss:false};
+  const g = p.state==='match' ? 'yes' : p.state==='miss' ? 'no' : 'dash';
+  const k = p.state==='match' ? 'ok'  : p.state==='miss' ? 'no' : 'un';
+  /* 안 맞는 줄은 「얼마나」까지 말한다 — 그래야 척추가 같은 말을 반복하지 않아도 된다 */
+  const t = p.state==='match' ? `${aboutNo}번이 이 조건을 충족합니다 (${p.has})`
+          : p.state==='miss'  ? `${aboutNo}번은 ${p.has}, ${ownerNo}번님은 ${josa(wantText(dim,p.want),'을','를')} 원하세요`
+          : p.want==null ? `${ownerNo}번님이 이 조건을 안 적으셨어요` : `${aboutNo}번 정보가 없어요`;
+  return {chip:`<span class="mk ${k}" role="img" aria-label="${t}" title="${t}">${ico(g,13)}</span>`,
+          miss:p.state==='miss', has:p.has, about:aboutNo};
+}
+/* dt/dd 한 쌍. 조건 옆에 상대의 실제 값을 같이 둔다 — 왜 ✓인지 ✕인지 마우스를 안 올려도 보이게. */
+function row(label, value, m){
+  const has = m.has ? `<span class="has">${m.about}번 ${m.has}</span>` : '';
+  return `<dt>${label}</dt><dd${m.miss?' class="miss"':''}>${m.chip}<span>${value}</span>${has}</dd>`;
+}
+
+const missLine=(p,owner,about)=>`${about}번은 ${p.has}, ${owner}번님은 ${josa(wantText(p.dim,p.want),'을','를')} 원하세요`;
+const askLine=(p,owner,about)=>p.want==null
+  ? `${owner}번님이 원하는 ${josa(p.dim,'을','를')} 안 적으셨어요`
+  : `${about}번 ${josa(p.dim,'은','는')} 알 수 없어요`;
+
+/* 맞물린 두 고리 — 고리 크기는 각자가 상대를 보는 정도, 겹친 넓이는 서로 맞는 정도.
+   반지름 7~18, 획 3 → r+획/2 ≤ 19.5 로 뷰박스 반높이 20 안에 들어간다(이전엔 잘렸다).
+   폭 차이는 Δ.18 당 약 2px — 나란히 놓였을 때 보이는 크기. 정확한 값은 아래 맞물림이 숫자로 말한다. */
+function clasp(mine, theirs, h, aSex, bSex){
+  const W = 76, H = 40, cx = W/2, cy = H/2;
+  const rL = 7 + 11*mine, rR = 7 + 11*theirs;
+  const d  = (rL + rR) * (1 - .62*h);
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true" class="clasp">
+    <circle cx="${(cx - d/2).toFixed(1)}" cy="${cy}" r="${rL.toFixed(1)}" fill="none" stroke="var(--${aSex}-ink)" stroke-width="3"/>
+    <circle cx="${(cx + d/2).toFixed(1)}" cy="${cy}" r="${rR.toFixed(1)}" fill="none" stroke="var(--${bSex}-ink)" stroke-width="3"/>
+  </svg>`;
+}
+
+function verdict(c, subjNo, hard){
+  if(Math.abs(c.mine - c.theirs) >= .18){
+    const lean = c.mine > c.theirs;
+    return {t:'한쪽만 맞아요', why: lean
+      ? `${subjNo}번님은 마음에 들어 하실 텐데, ${c.index}번님이 찾는 조건과는 거리가 있어요.`
+      : `${c.index}번님은 좋아하실 텐데, ${subjNo}번님이 찾는 조건과는 거리가 있어요.`};
+  }
+  if(c.h >= .80 && !hard) return {t:'서로 잘 맞아요', why:null};
+  if(c.h >= .65) return {t:'무난해요', why: hard ? '대체로 맞는데 한 가지가 걸립니다.' : null};
+  return {t:'잘 안 맞아요', why:'양쪽 조건이 여러 군데 어긋납니다.'};
+}
+
+const sel = document.getElementById('subj');
+DATA.slice().sort((a,b)=>a.index-b.index).forEach(s=>{
+  const o=document.createElement('option'); o.value=s.index;
+  o.textContent=`${s.index}번 · ${sexK(s.gender)} · ${s.birthYear}년생 · ${s.region}`;
+  sel.appendChild(o);
+});
+sel.onchange = () => { at = 0; render(); };
+
+function live(s){ return s.candidates.filter(c => mark[key(s.index,c.index)] !== 'declined'); }
+
+function turn(delta){
+  const s = BY[+sel.value], list = live(s);
+  const to = Math.min(Math.max(at + delta, 0), list.length - 1);
+  if(to === at) return;
+  document.documentElement.style.setProperty('--dir', delta > 0 ? '14px' : '-14px');
+  const stage = document.getElementById('stage');
+  stage.classList.add('turning');
+  requestAnimationFrame(() => { at = to; render(); requestAnimationFrame(()=>stage.classList.remove('turning')); });
+}
+document.getElementById('prev').onclick = () => turn(-1);
+document.getElementById('next').onclick = () => turn(1);
+addEventListener('keydown', e => {
+  if(e.target.tagName === 'SELECT') return;
+  if(e.key === 'ArrowLeft') turn(-1);
+  if(e.key === 'ArrowRight') turn(1);
+});
+
+function render(){
+  const s = BY[+sel.value];
+  const list = live(s);
+  const meS = sexC(s.gender), youS = sexC(other(s.gender));
+  at = Math.min(at, Math.max(list.length - 1, 0));
+
+  document.getElementById('strip').innerHTML = s.candidates.map(c => {
+    const st = mark[key(s.index,c.index)];
+    const i = list.indexOf(c);
+    return `<button class="tick${st==='declined'?' gone':''}" role="tab"
+      aria-current="${i===at && i>=0}" data-i="${i}" ${i<0?'disabled':''}>
+      <span>${c.index}</span>${st==='accepted'?`<span class="seal">${ico('yes',13)}</span>`:st==='asked'?`<span class="seal">${ico('ask',13)}</span>`:''}</button>`;
+  }).join('');
+  document.getElementById('railmeta').textContent = list.length ? `${at+1} / ${list.length}` : '0 / 0';
+  document.getElementById('prev').disabled = at <= 0;
+  document.getElementById('next').disabled = at >= list.length - 1;
+
+  const c = list[at];
+  const stage = document.getElementById('stage');
+  if(!c){ stage.innerHTML = '<div class="empty">소개할 만한 사람이 없습니다. 접어둔 후보를 되돌리거나 새 신청을 기다려야 해요.</div>'; return; }
+
+  const st = mark[key(s.index,c.index)];
+  const mp = c.mineParts||[], tp = c.theirParts||[];
+  const hard = [...mp,...tp].some(p=>p.state==='miss' && p.score<HARD_MISS);
+  const v = verdict(c, s.index, hard);
+  const bad = [...mp.filter(p=>p.state==='miss'&&p.score<REAL_MISS).map(p=>missLine(p,s.index,c.index)),
+               ...tp.filter(p=>p.state==='miss'&&p.score<REAL_MISS).map(p=>missLine(p,c.index,s.index))];
+  const ask = [...mp.filter(p=>p.state==='unknown'&&p.want!=null).map(p=>askLine(p,s.index,c.index)),
+               ...tp.filter(p=>p.state==='unknown').map(p=>askLine(p,c.index,s.index))].slice(0,3);
+  const gaps = [(s.ageLo==null&&s.ageHi==null)&&'나이',(s.hLo==null&&s.hHi==null)&&'키',
+    !s.wantFace.length&&'얼굴상',!s.wantRegion.length&&'지역'].filter(Boolean);
+
+  stage.innerHTML = `
+    <div class="verdict">
+      ${clasp(c.mine,c.theirs,c.h,meS,youS)}
+      <span class="vtext">${v.t}</span>
+      ${help(`두 고리 <b>크기</b>는 각자가 상대를 마음에 들어할 정도, <b>겹친 넓이</b>는 두 사람이 서로 맞는 정도입니다.<br><br>한쪽 고리만 크면 짝사랑이고, 둘이 깊게 겹치면 서로 맞는 짝입니다. 정확한 값은 아래 「맞물림」이 숫자로 말합니다.`)}
+    </div>
+    ${v.why?`<p class="vsub">${v.why}</p>`:''}
+
+    <div class="sheet">
+      <section class="card you${s.gender==='female'?' her':''}${folded?' folded':''}">
+        <div class="chead"><span class="cno">${s.index}번</span>
+          <span class="sex ${meS}">${sexK(s.gender)}</span><span class="role">소개받는 분</span></div>
+        <p class="line">${s.birthYear}년생 · ${s.region} · ${s.heightCm}cm${s.face?` · ${s.face}`:''}<br>${s.job}</p>
+        <button class="fold" data-fold>${folded?'조건 펼치기':'조건 접기'}</button>
+        <div class="foldsum">${['나이','키','얼굴상','지역']
+          .map(d=>`<span class="fs">${condMark(mp,d,s.index,c.index).chip}${d}</span>`).join('')}</div>
+        <dl>
+          ${row('찾는 나이', wantText('나이',{lo:s.ageLo,hi:s.ageHi})??'<span class="blank">안 적으셨어요</span>', condMark(mp,'나이',s.index,c.index))}
+          ${row('찾는 키', wantText('키',{lo:s.hLo,hi:s.hHi})??'<span class="blank">안 적으셨어요</span>', condMark(mp,'키',s.index,c.index))}
+          ${row('찾는 얼굴상', s.wantFace.length?s.wantFace.join('·'):'<span class="blank">안 적으셨어요</span>', condMark(mp,'얼굴상',s.index,c.index))}
+          ${row('찾는 지역', s.wantRegion.length?s.wantRegion.join('·')+'쪽':'<span class="blank">안 적으셨어요</span>', condMark(mp,'지역',s.index,c.index))}
+          <dt>절대 안 되는 것</dt><dd><span>${s.dealBreakers.length?s.dealBreakers.join(', '):'<span class="blank">없음</span>'}</span></dd>
+        </dl>
+        ${gaps.length?`<p class="line gapline">${gaps.join('·')} 조건이 비어 있어요 ${help('조건을 안 적으신 항목은 <b>중립</b>으로 둡니다. 맞는다고 보는 게 아니라 판단을 보류하는 겁니다.<br><br>물어봐서 채우면 순서가 달라집니다.', true)}</p>`:''}
+      </section>
+
+      <section class="card them">
+        <div class="chead"><span class="cno">${c.index}번</span>
+          <span class="sex ${youS}">${sexK(other(s.gender))}</span><span class="role">후보</span></div>
+        <p class="line">${c.birthYear}년생 · ${c.region} · ${c.heightCm}cm${c.face?` · ${c.face}`:''}${c.job?`<br>${c.job}`:''}</p>
+        <dl>
+          ${row('찾는 나이', (tp.find(p=>p.dim==='나이')?.want&&wantText('나이',tp.find(p=>p.dim==='나이').want))??'<span class="blank">안 적으셨어요</span>', condMark(tp,'나이',c.index,s.index))}
+          ${row('찾는 키', (tp.find(p=>p.dim==='키')?.want&&wantText('키',tp.find(p=>p.dim==='키').want))??'<span class="blank">안 적으셨어요</span>', condMark(tp,'키',c.index,s.index))}
+          ${row('찾는 얼굴상', (tp.find(p=>p.dim==='얼굴상')?.want||[]).join('·')||'<span class="blank">안 적으셨어요</span>', condMark(tp,'얼굴상',c.index,s.index))}
+          ${row('찾는 지역', ((tp.find(p=>p.dim==='지역')?.want)||[]).join('·')?((tp.find(p=>p.dim==='지역').want).join('·')+'쪽'):'<span class="blank">안 적으셨어요</span>', condMark(tp,'지역',c.index,s.index))}
+          <dt>절대 안 되는 것</dt><dd><span>${(BY[c.index]?.dealBreakers||[]).length?BY[c.index].dealBreakers.join(', '):'<span class="blank">없음</span>'}</span></dd>
+        </dl>
+        ${c.exposure>=8?`<div class="line" style="display:flex;gap:7px;align-items:center;color:var(--on-card);font-weight:700">
+          ${ico('crowd',16)} 이미 ${c.exposure}명의 상위권에 올라 있어요
+          ${help('한 사람에게 추천이 몰리면 그 사람이 답할 수 있는 양을 넘어섭니다. 아직 이 서비스에서 재본 적은 없고, 소개팅 연구에서 흔히 지적되는 문제입니다.<br><br>급하지 않다면 다른 후보를 먼저 물어보세요.', true)}</div>`:''}
+      </section>
+
+      <aside class="spine">
+        <h2>맞물림</h2>
+        <div class="beam">
+          <span class="bl"><span>${s.index}번님이 보기에</span><b>${Math.round(c.mine*100)}</b></span>
+          <span class="bar"><i class="${meS}" style="width:${c.mine*100}%"></i></span>
+        </div>
+        <div class="beam">
+          <span class="bl"><span>${c.index}번님이 보기에</span><b>${Math.round(c.theirs*100)}</b></span>
+          <span class="bar"><i class="${youS}" style="width:${c.theirs*100}%"></i></span>
+        </div>
+        ${ask.length?`<div class="note"><div class="nk">확인 필요</div><div class="nv">${ask.join('<br>')}</div></div>`:''}
+        ${(!bad.length&&!ask.length)?`<div class="note"><div class="nk">걸리는 것</div><div class="nv">없습니다</div></div>`:''}
+        ${bad.length?`<div class="note"><div class="nk">안 맞는 조건</div><div class="nv">${bad.length}가지</div></div>`:''}
+      </aside>
+    </div>
+
+    <div class="bottom">
+      ${st ? `<span class="done${st==='accepted'?' sealed':''}">${st==='asked'?'답 기다리는 중':'승낙 받음'}</span>
+              <button class="act quiet" data-a="reset">되돌리기</button>`
+           : `<button class="act go" data-a="asked">${ico('ask')} 물어볼게요</button>
+              <button class="act" data-a="accepted">${ico('yes')} 좋다고 하셨어요</button>
+              <button class="act quiet" data-a="declined">${ico('no')} 거절하셨어요</button>`}
+      <span class="spacer"></span>
+    </div>`;
+}
+
+document.addEventListener('click', e => {
+  if(e.target.closest('[data-fold]')){ folded = !folded; render(); return; }
+  const t = e.target.closest('.tick[data-i]');
+  if(t && !t.disabled){ at = +t.dataset.i; render(); return; }
+  const b = e.target.closest('.act[data-a]');
+  if(!b) return;
+  const s = BY[+sel.value], list = live(s), c = list[at];
+  if(!c) return;
+  const k = key(s.index, c.index);
+  if(b.dataset.a === 'reset') delete mark[k];
+  else { mark[k] = b.dataset.a; if(b.dataset.a === 'declined') at = Math.min(at, live(s).length - 1); }
+  render();
+});
+
+/* 도움말 */
+const pop = document.getElementById('pop');
+let pinned = null;
+function showPop(btn){
+  pop.innerHTML = btn.dataset.help; pop.classList.add('show');
+  const r = btn.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 12)) + 'px';
+  pop.style.top = (r.bottom + 8 + pop.offsetHeight > innerHeight ? r.top - pop.offsetHeight - 8 : r.bottom + 8) + 'px';
+}
+const hidePop = () => { pop.classList.remove('show'); pinned = null; };
+document.addEventListener('mouseover', e => {
+  const b = e.target.closest('.q'); if(b) showPop(b);
+  else if(!pinned && !e.target.closest('#pop')) hidePop();
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('.q');
+  if(b){ e.preventDefault(); if(pinned === b) hidePop(); else { showPop(b); pinned = b; } }
+  else if(!e.target.closest('#pop')) hidePop();
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape') hidePop(); });
+
+sel.value = DATA[0].index;
+render();
+</script>
+</body>
+</html>

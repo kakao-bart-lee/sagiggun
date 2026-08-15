@@ -75,6 +75,19 @@ model Profile {
   partnerRegions      String[]
   dealBreakers        String[]
 
+  // 실데이터 69건에서 이상형 언급률 1위(키 94%)·3위(얼굴상 47%)인데 구조화 필드가
+  // 없어 문자열로 뭉개지던 값들. 얼굴상은 어휘가 닫혀 있다(토끼·강아지·여우·두부…).
+  faceType         String?
+  partnerFaceTypes String[]
+  partnerHeightMin Int?
+  partnerHeightMax Int?
+
+  // 데알브레이커 1·2·3위. 부분문자열로는 「비흡연자」를 오탈락시킬 뿐 실제로는
+  // 못 잡는다. null은 미상 — false(아니오)와 구분해야 한다.
+  smoking  Boolean?
+  tattoo   Boolean?
+  drinking Boolean?
+
   // 작문 결과 — 게시 번호는 포함하지 않는다
   draftBody String? @db.Text
   finalBody String? @db.Text

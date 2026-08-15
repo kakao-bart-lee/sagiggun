@@ -1,27 +1,15 @@
 import { filterCandidates, type MatchProfileSlice } from '@/lib/match/filter';
+import { scorePair } from '@/lib/match/score';
+import { defaultCandidateDeps } from '@/lib/match/source';
 import { rankMatches, type MatchRankItem } from '@/lib/llm/match';
 import type { DeliveryStatus, MatchSuggestion, MatchSuggestionStatus } from '@prisma/client';
 
-const SELECT_SLICE = {
-  id: true,
-  sourceHandle: true,
-  status: true,
-  gender: true,
-  birthYear: true,
-  region: true,
-  partnerBirthYearMin: true,
-  partnerBirthYearMax: true,
-  partnerRegions: true,
-  dealBreakers: true,
-  idealType: true,
-  hobbies: true,
-  appealPoints: true,
-  job: true,
-  heightCm: true,
-} as const;
-
 export const DEFAULT_TOP_N = 5;
-export const MAX_LLM_CANDIDATES = 30;
+/**
+ * 구조화 필드로 먼저 줄을 세운 뒤 상위 몇 명만 LLM에 넘긴다. 30명을 통째로
+ * 넣으면 프롬프트가 subject에 anchoring되고, 사전 정렬은 공짜다.
+ */
+export const MAX_LLM_CANDIDATES = 8;
 
 export type RunMatchResult =
   | {
@@ -35,6 +23,8 @@ export type RunMatchResult =
 export type RunMatchDeps = {
   findSubject?: (id: string) => Promise<MatchProfileSlice | null>;
   listPool?: () => Promise<MatchProfileSlice[]>;
+  /** 이 subject와 이미 수락/거절까지 간 상대의 id. 방향 무관. */
+  listJudged?: (subjectId: string) => Promise<string[]>;
   rank?: (
     subject: MatchProfileSlice,
     candidates: MatchProfileSlice[],
@@ -51,23 +41,7 @@ export async function runMatch(
   topN: number = DEFAULT_TOP_N,
   deps: RunMatchDeps = {}
 ): Promise<RunMatchResult> {
-  const findSubject =
-    deps.findSubject ??
-    (async (id: string) => {
-      const { prisma } = await import('@/lib/prisma');
-      return prisma.profile.findUnique({ where: { id }, select: SELECT_SLICE });
-    });
-
-  const listPool =
-    deps.listPool ??
-    (async () => {
-      const { prisma } = await import('@/lib/prisma');
-      return prisma.profile.findMany({
-        where: { status: { in: ['APPROVED', 'PUBLISHED'] } },
-        select: SELECT_SLICE,
-        orderBy: { updatedAt: 'desc' },
-      });
-    });
+  const { findSubject, listPool, listJudged } = { ...defaultCandidateDeps(), ...deps };
 
   const rank =
     deps.rank ??
@@ -99,13 +73,21 @@ export async function runMatch(
   const subject = await findSubject(subjectId);
   if (!subject) return { ok: false, status: 404, error: '없는 프로필입니다.' };
 
-  const pool = await listPool();
-  const filtered = filterCandidates(subject, pool).slice(0, MAX_LLM_CANDIDATES);
-  if (filtered.length === 0) {
+  const [pool, judged] = await Promise.all([listPool(), listJudged(subjectId)]);
+  const passed = filterCandidates(subject, pool, { excludeIds: new Set(judged) });
+  if (passed.length === 0) {
     return { ok: false, status: 400, error: '하드필터를 통과한 후보가 없습니다.' };
   }
 
-  const rankings = await rank(subject, filtered, topN);
+  // 구조화 필드로 먼저 줄을 세우고 상위 몇 명만 LLM에 넘긴다.
+  // filteredCount는 잘라낸 뒤가 아니라 실제로 통과한 수를 보고한다.
+  const shortlist = passed
+    .map((c) => ({ c, score: scorePair(subject, c).harmonic }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_LLM_CANDIDATES)
+    .map((x) => x.c);
+
+  const rankings = await rank(subject, shortlist, topN);
   if (rankings.length === 0) {
     return { ok: false, status: 400, error: 'LLM이 유효한 추천을 반환하지 않았습니다.' };
   }
@@ -114,7 +96,7 @@ export async function runMatch(
   return {
     ok: true,
     runId: saved.runId,
-    filteredCount: filtered.length,
+    filteredCount: passed.length,
     suggestions: saved.suggestions,
   };
 }
