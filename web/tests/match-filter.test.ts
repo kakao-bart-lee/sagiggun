@@ -128,6 +128,26 @@ describe('filterCandidates', () => {
     expect(ids).toEqual(['fresh']);
   });
 
+  it('지역이 어긋나도 탈락시키지 않는다 — 경계가 아니라 선호다', () => {
+    // 부산 남성과 서울 여성. 서로의 희망 지역에 안 맞지만 후보로는 남아야 한다.
+    // 하드필터로 두면 지방 신청자가 수도권 전원에게서 전멸한다(점수에서 깎으면 된다).
+    const busan = profile({
+      id: 'busan',
+      gender: 'M',
+      birthYear: 1994,
+      region: '부산 해운대',
+      partnerRegions: ['부산', '경남'],
+    });
+    const seoul = profile({
+      id: 'seoul',
+      gender: 'F',
+      birthYear: 1998,
+      region: '서울 강남',
+      partnerRegions: ['서울'],
+    });
+    expect(filterCandidates(busan, [seoul]).map((p) => p.id)).toEqual(['seoul']);
+  });
+
   it('제외 목록을 안 주면 아무것도 더 막지 않는다', () => {
     const subject = profile({ id: 's', gender: 'M', birthYear: 1995 });
     const pool = [profile({ id: 'a', gender: 'F', birthYear: 1995 })];

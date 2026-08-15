@@ -85,7 +85,7 @@ export type FilterOptions = {
 };
 
 /**
- * subject 기준 하드필터. 자기 자신·상태·성별·나이 상호·지역·dealBreaker·기판정을 걸러낸다.
+ * subject 기준 하드필터. 자기 자신·상태·성별·나이 상호·dealBreaker·기판정을 걸러낸다.
  *
  * 경계(성별)만 확실히 막고 나머지는 fail-open이다. 풀이 수십 명뿐이라
  * 선호까지 하드필터로 올리면 후보가 0에 가까워진다.
@@ -113,8 +113,8 @@ export function filterCandidates(
       return false;
     }
 
-    if (!regionCompatible(c.region, subject.partnerRegions)) return false;
-    if (!regionCompatible(subject.region, c.partnerRegions)) return false;
+    // 지역은 게이트가 아니라 점수다(scoreDirection). 하드필터로 두면 지방 신청자가
+    // 수도권 전원에게서 전멸한다 — 실제로 부산 남성의 후보가 4명에서 1명으로 줄었다.
 
     if (dealBreakerHit(subject.dealBreakers, summaryText(c))) return false;
     if (dealBreakerHit(c.dealBreakers, summaryText(subject))) return false;
