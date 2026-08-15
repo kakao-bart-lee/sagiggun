@@ -210,26 +210,24 @@ export function FacingSheet({ subjects }: { subjects: SubjectOption[] }) {
 
       {c && s && v && (
         <>
-          <nav className="flex items-center gap-2 border-b-2 border-edge py-3" aria-label="후보 넘기기">
-            <div className="flex flex-1 gap-1.5 overflow-x-auto pr-2">
-              {list.map((x, i) => (
-                <button
-                  key={x.id}
-                  onClick={() => setAt(i)}
-                  aria-current={i === at}
-                  className={[
-                    'h-[38px] min-w-[46px] flex-none rounded-[8px] border-2 px-2 text-sm font-extrabold',
-                    i === at
-                      ? 'border-card bg-card text-on-card'
-                      : 'border-fog-muted text-fog hover:border-fog',
-                  ].join(' ')}
-                >
-                  {x.seq ?? '–'}
-                </button>
-              ))}
-            </div>
-            <span className="whitespace-nowrap text-[11px] font-extrabold text-fog-muted">
-              {at + 1} / {list.length}
+          {/*
+            번호를 전부 늘어놓는 레일이었는데, 실데이터에서 후보가 30명을 넘자
+            절반이 가로 스크롤 뒤로 숨었다. 이 화면은 점수 순으로 위에서부터
+            태워나가는 곳이라 번호 인덱스가 애초에 맞지 않는 장치였다.
+          */}
+          <nav className="flex items-center gap-3 border-b-2 border-edge py-3" aria-label="후보 넘기기">
+            <Step dir="prev" disabled={at === 0} onClick={() => setAt((a) => a - 1)} />
+            <span className="text-sm font-extrabold tabular-nums text-fog">
+              {at + 1}
+              <span className="font-bold text-fog-muted"> / {list.length}</span>
+            </span>
+            <Step
+              dir="next"
+              disabled={at >= list.length - 1}
+              onClick={() => setAt((a) => a + 1)}
+            />
+            <span className="ml-auto text-[11px] font-extrabold text-fog-muted">
+              짝 점수가 높은 순
             </span>
           </nav>
 
@@ -292,6 +290,39 @@ export function FacingSheet({ subjects }: { subjects: SubjectOption[] }) {
         </>
       )}
     </>
+  );
+}
+
+function Step({
+  dir,
+  disabled,
+  onClick,
+}: {
+  dir: 'prev' | 'next';
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const prev = dir === 'prev';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={prev ? '이전 후보' : '다음 후보'}
+      title={`${prev ? '이전' : '다음'} 후보 (${prev ? '←' : '→'})`}
+      className="flex h-[38px] w-[38px] items-center justify-center rounded-[8px] border-2 border-fog-muted text-fog hover:border-fog disabled:opacity-30 disabled:hover:border-fog-muted"
+    >
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+        <path
+          d={prev ? 'M11.5 4.5 6.5 9.5l5 5' : 'M6.5 4.5l5 5-5 5'}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
   );
 }
 
