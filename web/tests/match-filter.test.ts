@@ -6,6 +6,7 @@ import {
   filterCandidates,
   type MatchProfileSlice,
 } from '@/lib/match/filter';
+import { scoreDirection } from '@/lib/match/score';
 
 function profile(partial: Partial<MatchProfileSlice> & { id: string }): MatchProfileSlice {
   return {
@@ -126,6 +127,45 @@ describe('filterCandidates', () => {
       excludeIds: new Set(['judged']),
     }).map((p) => p.id);
     expect(ids).toEqual(['fresh']);
+  });
+
+  it('나이가 구간을 2년까지 벗어나도 통과시킨다 — 아슬아슬한 차이로 죽이지 않는다', () => {
+    // 실데이터에서 나이로 탈락한 쌍 1008개 중 520개가 2년 이내 차이였다.
+    const subject = profile({
+      id: 's',
+      gender: 'M',
+      birthYear: 1995,
+      partnerBirthYearMin: 1996,
+      partnerBirthYearMax: 2006,
+    });
+    const twoYearsOff = profile({
+      id: 'near',
+      gender: 'F',
+      birthYear: 2001,
+      partnerBirthYearMin: 1997, // subject(1995)가 2년 모자란다
+      partnerBirthYearMax: 2006,
+    });
+    expect(filterCandidates(subject, [twoYearsOff]).map((p) => p.id)).toEqual(['near']);
+  });
+
+  it('3년을 넘으면 여전히 탈락시킨다', () => {
+    const subject = profile({ id: 's', gender: 'M', birthYear: 1995 });
+    const tooFar = profile({
+      id: 'far',
+      gender: 'F',
+      birthYear: 2001,
+      partnerBirthYearMin: 1999, // subject가 4년 모자란다
+      partnerBirthYearMax: 2006,
+    });
+    expect(filterCandidates(subject, [tooFar])).toEqual([]);
+  });
+
+  it('여유는 게이트에만 준다 — 점수는 그대로 깎인다', () => {
+    const me = profile({ id: 'me', partnerBirthYearMin: 1996, partnerBirthYearMax: 2006 });
+    const oneYearOff = profile({ id: 'you', birthYear: 1995 });
+    const age = scoreDirection(me, oneYearOff).parts.find((p) => p.dim === '나이')!;
+    expect(age.state).toBe('miss');
+    expect(age.score).toBeCloseTo(1 - 1 / 6, 5);
   });
 
   it('지역이 어긋나도 탈락시키지 않는다 — 경계가 아니라 선호다', () => {

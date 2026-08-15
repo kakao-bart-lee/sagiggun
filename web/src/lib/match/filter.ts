@@ -39,6 +39,22 @@ export function birthYearInRange(
   return true;
 }
 
+/** 적어낸 나이 구간 밖으로 이만큼까지는 게이트를 통과시킨다(점수는 그대로 깎는다). */
+export const AGE_GATE_SLACK = 2;
+
+/** birthYearInRange에 여유를 준 버전. 하드필터가 쓰는 것은 이쪽이다. */
+export function withinAgeGate(
+  birthYear: number | null | undefined,
+  min: number | null | undefined,
+  max: number | null | undefined
+): boolean {
+  return birthYearInRange(
+    birthYear,
+    min == null ? null : min - AGE_GATE_SLACK,
+    max == null ? null : max + AGE_GATE_SLACK
+  );
+}
+
 /** 지역 힌트: 한쪽 partnerRegions가 비면 통과. 둘 다 있으면 교집합/부분문자열. */
 export function regionCompatible(
   region: string | null | undefined,
@@ -104,12 +120,15 @@ export function filterCandidates(
     // 성별이 비어 있다고 그 프로필을 영영 안 보여주면 조용히 사라진다.
     if (subject.gender && c.gender && subject.gender === c.gender) return false;
 
-    // subject가 원하는 상대 나이 ← candidate 출생연도
-    if (!birthYearInRange(c.birthYear, subject.partnerBirthYearMin, subject.partnerBirthYearMax)) {
+    // 나이는 경계로 두되 여유를 준다. 실데이터에서 나이로 탈락한 쌍 1008개 중
+    // 520개가 2년 이내 차이였다 — 아슬아슬하게 빗나간 짝을 통째로 버리는 셈이었다.
+    // 여유는 게이트에만 준다. 점수(scoreDirection)는 적어낸 구간 그대로 깎으므로
+    // 살아남더라도 뒤로 밀린다.
+    if (!withinAgeGate(c.birthYear, subject.partnerBirthYearMin, subject.partnerBirthYearMax)) {
       return false;
     }
     // 상호: candidate가 원하는 나이 ← subject 출생연도
-    if (!birthYearInRange(subject.birthYear, c.partnerBirthYearMin, c.partnerBirthYearMax)) {
+    if (!withinAgeGate(subject.birthYear, c.partnerBirthYearMin, c.partnerBirthYearMax)) {
       return false;
     }
 
