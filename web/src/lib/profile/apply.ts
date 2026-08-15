@@ -1,5 +1,6 @@
 import { normalizeHandle } from '@/lib/inquiry/service';
 import { parseAgeBounds } from '@/lib/match/age-bounds';
+import { parseFaceTypes, parseHeightBounds } from '@/lib/match/ideal';
 
 export type ApplyFields = {
   applicantType: 'SELF' | 'FRIEND';
@@ -68,6 +69,9 @@ export function buildApplyProfileData(f: ApplyFields) {
   ].filter((v): v is string => Boolean(v));
 
   const age = parseAgeBounds(f.idealAgeGap ? [f.idealAgeGap] : [], f.birthYear);
+  // 조립한 idealType에서 뽑는다 — LLM 추출로 들어온 프로필과 같은 코드 경로를 탄다
+  const height = parseHeightBounds(idealType);
+  const faces = parseFaceTypes(idealType);
 
   return {
     sourceHandle: normalizeHandle(f.handle),
@@ -82,6 +86,9 @@ export function buildApplyProfileData(f: ApplyFields) {
     idealType,
     partnerBirthYearMin: age.min,
     partnerBirthYearMax: age.max,
+    partnerHeightMin: height.min,
+    partnerHeightMax: height.max,
+    partnerFaceTypes: faces,
     partnerRegions: splitList(f.idealRegions),
     dealBreakers: splitList(f.dealBreakers),
   };

@@ -43,6 +43,24 @@ describe('buildApplyProfileData', () => {
     expect(data.partnerBirthYearMax).toBeNull();
   });
 
+  it('이상형 키를 숫자 구간으로 저장한다', () => {
+    const data = buildApplyProfileData(fields({ idealHeight: '175 이상' }));
+    expect(data.partnerHeightMin).toBe(175);
+    expect(data.partnerHeightMax).toBeNull();
+  });
+
+  it('이상형 얼굴상을 닫힌 어휘로 저장한다', () => {
+    const data = buildApplyProfileData(fields({ idealVibe: '강아지상, 두부상' }));
+    expect(data.partnerFaceTypes).toEqual(['강아지상', '두부상']);
+  });
+
+  it('읽어내지 못한 이상형은 비워 둔다', () => {
+    const data = buildApplyProfileData(fields({ idealHeight: '보통', idealVibe: '귀여운 느낌' }));
+    expect(data.partnerHeightMin).toBeNull();
+    expect(data.partnerHeightMax).toBeNull();
+    expect(data.partnerFaceTypes).toEqual([]);
+  });
+
   // ── 아래는 라우트에서 옮겨온 기존 동작이 그대로인지 지키는 회귀 테스트 ──
 
   it('이상형 항목들을 접두어와 함께 한 배열로 모은다', () => {

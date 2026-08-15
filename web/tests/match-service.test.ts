@@ -26,6 +26,10 @@ function slice(id: string, extra: Partial<MatchProfileSlice> = {}): MatchProfile
     appealPoints: [],
     job: null,
     heightCm: null,
+    faceType: null,
+    partnerFaceTypes: [],
+    partnerHeightMin: null,
+    partnerHeightMax: null,
     ...extra,
   };
 }

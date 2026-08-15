@@ -33,6 +33,10 @@ describe('llm mock fixtures', () => {
       appealPoints: [],
       job: null,
       heightCm: null,
+      faceType: null,
+      partnerFaceTypes: [],
+      partnerHeightMin: null,
+      partnerHeightMax: null,
     };
     const ranks = mockRankMatches(
       subject,
@@ -65,6 +69,10 @@ describe('mockRankMatches — 계약 준수', () => {
     appealPoints: [],
     job: null,
     heightCm: null,
+    faceType: null,
+    partnerFaceTypes: [],
+    partnerHeightMin: null,
+    partnerHeightMax: null,
   };
 
   it('초안에 핸들을 쓰지 않고 게시번호로 지칭한다', () => {

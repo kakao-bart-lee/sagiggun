@@ -12,17 +12,8 @@ export type DimScore = {
 };
 export type DirectionScore = { score: number; parts: DimScore[] };
 
-/**
- * 키·얼굴상은 아직 스키마에 없다. 값이 없으면 미상으로 떨어지므로,
- * 마이그레이션이 들어오면 이 모듈은 손대지 않아도 켜진다.
- */
-export type ScoreSlice = MatchProfileSlice &
-  Partial<{
-    partnerHeightMin: number | null;
-    partnerHeightMax: number | null;
-    faceType: string | null;
-    partnerFaceTypes: string[];
-  }>;
+/** 키·얼굴상은 이제 실재하는 컬럼이다. 비어 있으면 미상으로 떨어진다. */
+export type ScoreSlice = MatchProfileSlice;
 
 /** 조건을 안 적었거나 상대 값을 모를 때. 맞는다고 보지도, 깎지도 않는다. */
 const NEUTRAL = 0.6;

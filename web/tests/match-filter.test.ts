@@ -24,6 +24,10 @@ function profile(partial: Partial<MatchProfileSlice> & { id: string }): MatchPro
     appealPoints: partial.appealPoints ?? [],
     job: partial.job ?? null,
     heightCm: partial.heightCm ?? null,
+    faceType: partial.faceType ?? null,
+    partnerFaceTypes: partial.partnerFaceTypes ?? [],
+    partnerHeightMin: partial.partnerHeightMin ?? null,
+    partnerHeightMax: partial.partnerHeightMax ?? null,
     ...partial,
   };
 }

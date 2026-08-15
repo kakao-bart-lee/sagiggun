@@ -21,6 +21,10 @@ export const CANDIDATE_SELECT = {
   appealPoints: true,
   job: true,
   heightCm: true,
+  faceType: true,
+  partnerFaceTypes: true,
+  partnerHeightMin: true,
+  partnerHeightMax: true,
 } as const;
 
 export function defaultCandidateDeps() {
