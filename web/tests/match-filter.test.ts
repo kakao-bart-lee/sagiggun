@@ -9,6 +9,7 @@ import {
 
 function profile(partial: Partial<MatchProfileSlice> & { id: string }): MatchProfileSlice {
   return {
+    seq: partial.seq ?? null,
     sourceHandle: partial.sourceHandle ?? partial.id,
     status: partial.status ?? 'PUBLISHED',
     gender: partial.gender ?? null,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rankMatches } from '@/lib/llm/match';
+import { rankMatches, MATCH_SYSTEM } from '@/lib/llm/match';
 import type { MatchProfileSlice } from '@/lib/match/filter';
 import {
   acceptSuggestion,
@@ -11,6 +11,7 @@ import {
 function slice(id: string, extra: Partial<MatchProfileSlice> = {}): MatchProfileSlice {
   return {
     id,
+    seq: null,
     sourceHandle: id,
     status: 'PUBLISHED',
     gender: null,
@@ -29,6 +30,76 @@ function slice(id: string, extra: Partial<MatchProfileSlice> = {}): MatchProfile
   };
 }
 
+describe('rankMatches — 양방향', () => {
+  it('LLM에 게시번호를 넘기고 핸들은 넘기지 않는다', async () => {
+    // 핸들이 프롬프트에 들어가면 LLM이 DM 초안에 그대로 쓴다. 번호로만 지칭해야 한다.
+    let sent = '';
+    await rankMatches(
+      slice('s', { seq: 12, sourceHandle: 'subject_handle' }),
+      [slice('c1', { seq: 43, sourceHandle: 'secret_handle' })],
+      5,
+      {
+        parse: async (req) => {
+          sent = JSON.stringify(req);
+          return { parsed_output: { rankings: [] } };
+        },
+      }
+    );
+    expect(sent).toContain('43');
+    expect(sent).not.toContain('secret_handle');
+    expect(sent).not.toContain('subject_handle');
+    expect(sent).toContain('c1'); // id는 남아야 candidateId를 되돌려받는다
+  });
+
+  it('두 방향 점수를 조화평균으로 묶는다', async () => {
+    const [item] = await rankMatches(slice('s'), [slice('c1')], 5, {
+      parse: async () => ({
+        parsed_output: {
+          rankings: [
+            {
+              candidateId: 'c1',
+              scoreForSubject: 0.9,
+              scoreForCandidate: 0.5,
+              rationale: 'ok',
+              draftForSubject: 'a',
+              draftForCandidate: 'b',
+            },
+          ],
+        },
+      }),
+    });
+    expect(item.scoreForSubject).toBe(0.9);
+    expect(item.scoreForCandidate).toBe(0.5);
+    expect(item.score).toBeCloseTo(0.643, 3); // 2*.9*.5/1.4
+  });
+
+  it('한쪽 점수가 0이면 짝 점수도 0이다', async () => {
+    const [item] = await rankMatches(slice('s'), [slice('c1')], 5, {
+      parse: async () => ({
+        parsed_output: {
+          rankings: [
+            {
+              candidateId: 'c1',
+              scoreForSubject: 0.9,
+              scoreForCandidate: 0,
+              rationale: 'ok',
+              draftForSubject: 'a',
+              draftForCandidate: 'b',
+            },
+          ],
+        },
+      }),
+    });
+    expect(item.score).toBe(0);
+  });
+
+  it('프롬프트가 상대의 선별 기준 누설을 금지한다', () => {
+    expect(MATCH_SYSTEM).toMatch(/선별|조건|기준/);
+    expect(MATCH_SYSTEM).toContain('번호');
+    expect(MATCH_SYSTEM).not.toContain('핸들은 @로 표기');
+  });
+});
+
 describe('rankMatches', () => {
   it('목록에 없는 candidateId와 빈 초안을 버린다', async () => {
     const subject = slice('s');
@@ -39,28 +110,32 @@ describe('rankMatches', () => {
           rankings: [
             {
               candidateId: 'ghost',
-              score: 0.9,
+              scoreForSubject: 0.9,
+              scoreForCandidate: 0.9,
               rationale: 'x',
               draftForSubject: 'a',
               draftForCandidate: 'b',
             },
             {
               candidateId: 'c1',
-              score: 0.8,
+              scoreForSubject: 0.8,
+              scoreForCandidate: 0.8,
               rationale: 'ok',
               draftForSubject: '',
               draftForCandidate: 'b',
             },
             {
               candidateId: 'c2',
-              score: 0.7,
+              scoreForSubject: 0.8,
+              scoreForCandidate: 0.6,
               rationale: 'ok',
               draftForSubject: 'to s',
               draftForCandidate: 'to c',
             },
             {
               candidateId: 'c2',
-              score: 0.6,
+              scoreForSubject: 0.6,
+              scoreForCandidate: 0.6,
               rationale: 'dup',
               draftForSubject: 'x',
               draftForCandidate: 'y',
@@ -72,7 +147,9 @@ describe('rankMatches', () => {
     expect(rankings).toEqual([
       {
         candidateId: 'c2',
-        score: 0.7,
+        scoreForSubject: 0.8,
+        scoreForCandidate: 0.6,
+        score: 2 * 0.8 * 0.6 / 1.4, // 조화평균
         rationale: 'ok',
         draftForSubject: 'to s',
         draftForCandidate: 'to c',
@@ -152,6 +229,8 @@ describe('runMatch', () => {
       rank: async () => [
         {
           candidateId: 'c0',
+          scoreForSubject: 0.9,
+          scoreForCandidate: 0.9,
           score: 0.9,
           rationale: 'ok',
           draftForSubject: 'a',
@@ -186,6 +265,8 @@ describe('runMatch', () => {
       rank: async () => [
         {
           candidateId: 'c1',
+          scoreForSubject: 0.9,
+          scoreForCandidate: 0.9,
           score: 0.9,
           rationale: '맞음',
           draftForSubject: 'hi',

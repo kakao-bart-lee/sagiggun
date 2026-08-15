@@ -91,7 +91,9 @@ export function mockRankMatches(
 ): MatchRankItem[] {
   return candidates.slice(0, topN).map((c, i) => ({
     candidateId: c.id,
-    score: Math.max(0.5, 0.95 - i * 0.08),
+    scoreForSubject: Math.max(0.5, 0.95 - i * 0.08),
+    scoreForCandidate: Math.max(0.5, 0.9 - i * 0.08),
+    score: Math.max(0.5, 0.92 - i * 0.08),
     rationale: `@${subject.sourceHandle}와 @${c.sourceHandle}는 지역·나이 조건이 가깝습니다.`,
     draftForSubject: `안녕하세요 @${subject.sourceHandle}님, 매칭 안내입니다.\n상대: @${c.sourceHandle} (${c.region ?? '지역 미상'} · ${c.birthYear ?? '연도 미상'})\n관심 있으시면 답장 주세요.`,
     draftForCandidate: `안녕하세요 @${c.sourceHandle}님, 매칭 안내입니다.\n상대: @${subject.sourceHandle} (${subject.region ?? '지역 미상'} · ${subject.birthYear ?? '연도 미상'})\n관심 있으시면 답장 주세요.`,

@@ -18,6 +18,7 @@ describe('llm mock fixtures', () => {
   it('mockRankMatches는 topN개를 돌려준다', () => {
     const subject = {
       id: 's',
+      seq: null,
       sourceHandle: 's',
       status: 'PUBLISHED' as const,
       gender: 'F',

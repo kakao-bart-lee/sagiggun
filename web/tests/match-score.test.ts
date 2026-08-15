@@ -4,6 +4,7 @@ import { scoreDirection, harmonic, scorePair, type ScoreSlice } from '@/lib/matc
 function p(extra: Partial<ScoreSlice> = {}): ScoreSlice {
   return {
     id: 'x',
+    seq: null,
     sourceHandle: 'x',
     status: 'PUBLISHED',
     gender: null,

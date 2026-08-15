@@ -5,6 +5,7 @@ import type { DeliveryStatus, MatchSuggestion, MatchSuggestionStatus } from '@pr
 
 const SELECT_SLICE = {
   id: true,
+  seq: true,
   sourceHandle: true,
   status: true,
   gender: true,

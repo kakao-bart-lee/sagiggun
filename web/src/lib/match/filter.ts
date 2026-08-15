@@ -3,6 +3,7 @@ import type { Profile } from '@prisma/client';
 export type MatchProfileSlice = Pick<
   Profile,
   | 'id'
+  | 'seq'
   | 'sourceHandle'
   | 'status'
   | 'gender'
