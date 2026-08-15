@@ -54,3 +54,15 @@
   `https://threads.net/oauth/authorize?...redirect_uri=https%3A%2F%2Flove.nngn.ai%2Fapi%2Fadmin%2Fthreads%2Fcallback&scope=threads_basic%2Cthreads_content_publish%2Cthreads_delete...`
   정상 리다이렉트 확인. 실제 OAuth 동의(Threads 계정 로그인)는 사용자가
   브라우저에서 직접 완료해야 한다 — 여기까지는 자동화 검증, 그 뒤는 수동.
+
+## 후속 배포 (공개 홈 카드 출생연도·지역 노출 제거)
+
+- PR #16(`fix: 공개 홈 카드에서 출생연도·지역 노출 제거`)을 main에 머지
+  (`8f5437b`). 공개 홈 목록 카드와 조회 쿼리에서 `birthYear`, `region`
+  필드를 제거해 성별·소개글만 남긴다 — 프로젝트가 비공개 스텔스 성격이라
+  노출 필드를 최소화했다.
+- `cd web && gcloud builds submit --config=cloudbuild.yaml --project=haruto-snow
+  --substitutions=_LLM_MODE=mock,_LLM_PROVIDER=openai,_LLM_MODEL=gpt-5.6-luna,_LLM_REASONING=high .`
+  로 재배포 → `sagiggun-00010-8b5`, traffic 100%.
+- 검증: `https://love.nngn.ai/` 200, 응답 HTML에 `NN년생` 패턴 없음(출생연도
+  뱃지 미노출 확인).

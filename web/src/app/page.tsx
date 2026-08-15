@@ -17,8 +17,6 @@ const getPublishedProfiles = unstable_cache(
       select: {
         seq: true,
         gender: true,
-        birthYear: true,
-        region: true,
         finalBody: true,
       },
       orderBy: { seq: 'desc' },
@@ -92,16 +90,6 @@ export default async function PublicHome() {
                     {genderLabel(p.gender) && (
                       <span className="rounded-full border border-card-line px-2 py-0.5 text-[11px] font-bold text-muted-on-card">
                         {genderLabel(p.gender)}
-                      </span>
-                    )}
-                    {p.birthYear != null && (
-                      <span className="rounded-full border border-card-line px-2 py-0.5 text-[11px] font-bold text-muted-on-card">
-                        {String(p.birthYear).slice(-2)}년생
-                      </span>
-                    )}
-                    {p.region && (
-                      <span className="rounded-full border border-card-line px-2 py-0.5 text-[11px] font-bold text-muted-on-card">
-                        {p.region}
                       </span>
                     )}
                   </div>
