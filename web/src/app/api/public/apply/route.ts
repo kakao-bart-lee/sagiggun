@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { assertUploadable, putPhoto } from '@/lib/storage';
 import { checkPublicSubmitLimit, getClientIp } from '@/lib/rate-limit';
 import { normalizeHandle } from '@/lib/inquiry/service';
+import { buildApplyProfileData } from '@/lib/profile/apply';
 
 // 공개 신청 폼(/apply) — DM 양식의 구조화 버전.
 // 구조화 필드는 Profile에 바로 넣고(LLM 추출 불필요), rawText에는 양식 텍스트를
@@ -32,37 +33,6 @@ const fields = z.object({
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_PHOTOS = 2;
-
-function splitList(value: string): string[] {
-  return value
-    .split(/[\n,]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-function serializeRawText(f: z.infer<typeof fields>): string {
-  const appeals = [f.appeal1, f.appeal2, f.appeal3].filter(Boolean);
-  return `[웹 신청] ${f.applicantType === 'SELF' ? '본인' : '친구 대신 신청'}
-스레드 아이디: @${normalizeHandle(f.handle)}
-
-🤍 본인 소개
-- 나이 / 성별 / 키: ${f.birthYear}년생 / ${f.gender === 'F' ? '여' : '남'} / ${f.heightCm}cm
-- 지역: ${f.region}
-- 직업: ${f.job}
-- 취미: ${f.hobbies}
-- 본인 어필
-${appeals.map((a, i) => `${i + 1}. ${a}`).join('\n')}
-
-💛 원하는 이상형
-- 키: ${f.idealHeight || '-'}
-- 얼굴 느낌: ${f.idealVibe || '-'}
-- 내적: ${f.idealInner || '-'}
-- 나이차이: ${f.idealAgeGap || '-'}
-- 가능한 지역이나 거리: ${f.idealRegions || '-'}
-- 이건 절대 안 돼요: ${f.dealBreakers || '-'}
-
-성인 확인·개인정보 수집 동의 완료 (웹 신청 폼)`;
-}
 
 export async function POST(request: Request) {
   const limit = checkPublicSubmitLimit(`apply:${getClientIp(request)}`, Date.now());
@@ -118,28 +88,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '스레드 아이디를 확인해 주세요.' }, { status: 400 });
   }
 
-  const idealType = [
-    f.idealHeight && `키 ${f.idealHeight}`,
-    f.idealVibe && `얼굴 느낌: ${f.idealVibe}`,
-    f.idealInner,
-    f.idealAgeGap && `나이차이: ${f.idealAgeGap}`,
-  ].filter((v): v is string => Boolean(v));
-
   const profile = await prisma.profile.create({
-    data: {
-      sourceHandle: handle,
-      rawText: serializeRawText(f),
-      gender: f.gender,
-      birthYear: f.birthYear,
-      heightCm: f.heightCm,
-      region: f.region,
-      job: f.job,
-      hobbies: splitList(f.hobbies),
-      appealPoints: [f.appeal1, f.appeal2, f.appeal3].filter(Boolean),
-      idealType,
-      partnerRegions: splitList(f.idealRegions),
-      dealBreakers: splitList(f.dealBreakers),
-    },
+    data: buildApplyProfileData(f),
     select: { id: true },
   });
 
