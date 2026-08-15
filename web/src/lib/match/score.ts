@@ -1,4 +1,5 @@
-import { regionCompatible, type MatchProfileSlice } from '@/lib/match/filter';
+import type { MatchProfileSlice } from '@/lib/match/filter';
+import { regionLabel, regionsOverlap } from '@/lib/match/region';
 
 export type DimState = 'match' | 'miss' | 'unknown';
 export type DimScore = {
@@ -79,17 +80,18 @@ function scoreFace(me: ScoreSlice, other: ScoreSlice): DimScore {
   );
 }
 
+/**
+ * 지역은 양쪽을 광역 코드로 바꾼 뒤 교집합으로 본다. 문자열을 그대로 비교하면
+ * 대구와 경상도가 남남이 되고, 실데이터 지역 판정의 80%가 그렇게 ✕로 떨어졌다.
+ * 찾는 지역은 원문이 문장이라 라벨로 줄여 보여주고, 사는 곳은 짧으니 적어낸 대로 둔다.
+ */
 function scoreRegion(me: ScoreSlice, other: ScoreSlice): DimScore {
   const list = me.partnerRegions ?? [];
-  const want = list.length ? `${list.join('·')}쪽` : null;
+  const want = regionLabel(list);
   const has = other.region?.trim() ? other.region : null;
-  if (!want || !has) return make('지역', want, has, NEUTRAL_MADE);
-  return make(
-    '지역',
-    want,
-    has,
-    regionCompatible(has, list) ? MATCHED : { score: 0.2, state: 'miss' }
-  );
+  const overlap = regionsOverlap([other.region], list);
+  if (overlap == null) return make('지역', want, has, NEUTRAL_MADE);
+  return make('지역', want, has, overlap ? MATCHED : { score: 0.2, state: 'miss' });
 }
 
 /** me가 적은 조건에 other가 얼마나 맞는가. 0~1. */

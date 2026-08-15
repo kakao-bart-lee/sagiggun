@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   birthYearInRange,
-  regionCompatible,
   dealBreakerHit,
   filterCandidates,
   type MatchProfileSlice,
@@ -43,16 +42,6 @@ describe('birthYearInRange', () => {
   });
   it('출생연도 없으면 통과', () => {
     expect(birthYearInRange(null, 1990, 2000)).toBe(true);
-  });
-});
-
-describe('regionCompatible', () => {
-  it('선호 지역 없으면 통과', () => {
-    expect(regionCompatible('서울', [])).toBe(true);
-  });
-  it('부분 문자열 매칭', () => {
-    expect(regionCompatible('서울 강남', ['서울'])).toBe(true);
-    expect(regionCompatible('부산', ['서울'])).toBe(false);
   });
 });
 

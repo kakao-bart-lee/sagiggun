@@ -159,7 +159,7 @@ describe('DimScore 표시값', () => {
     expect(noCond.has).toBe('1996년생');
 
     const noVal = dim(scoreDirection(p({ partnerRegions: ['서울'] }), p({ region: null })), '지역');
-    expect(noVal.want).toBe('서울쪽');
+    expect(noVal.want).toBe('서울'); // 「쪽」은 붙이지 않는다 — 「수도권쪽」이 되면 어색하다
     expect(noVal.has).toBeNull();
   });
 
@@ -168,5 +168,23 @@ describe('DimScore 표시값', () => {
     const face = dim(scoreDirection(me, p({ faceType: '곰상' })), '얼굴상');
     expect(face.want).toBe('고양이상·여우상');
     expect(face.has).toBe('곰상');
+  });
+});
+
+describe('지역 판정은 광역 관계를 안다', () => {
+  it('대구 사람은 「경상도권」을 원하는 사람에게 맞는다', () => {
+    const wantsGyeongsang = p({ partnerRegions: ['경상도권 여성분 선호합니다.'] });
+    const daegu = p({ region: '대구' });
+    expect(dim(scoreDirection(wantsGyeongsang, daegu), '지역').state).toBe('match');
+  });
+
+  it('찾는 지역을 문장이 아니라 지명으로 보여준다', () => {
+    const wantsGyeongsang = p({ partnerRegions: ['경상도권 여성분 선호합니다.'] });
+    expect(dim(scoreDirection(wantsGyeongsang, p({ region: '대구' })), '지역').want).toBe('경상');
+  });
+
+  it('지명을 못 읽어내면 깎지 않는다 — 「장거리 가능해요!」', () => {
+    const anywhere = p({ partnerRegions: ['장거리 가능해요!'] });
+    expect(dim(scoreDirection(anywhere, p({ region: '부산' })), '지역').state).toBe('unknown');
   });
 });

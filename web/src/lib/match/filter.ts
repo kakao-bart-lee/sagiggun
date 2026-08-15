@@ -55,18 +55,6 @@ export function withinAgeGate(
   );
 }
 
-/** 지역 힌트: 한쪽 partnerRegions가 비면 통과. 둘 다 있으면 교집합/부분문자열. */
-export function regionCompatible(
-  region: string | null | undefined,
-  partnerRegions: string[] | null | undefined
-): boolean {
-  const wanted = (partnerRegions ?? []).map((r) => r.trim().toLowerCase()).filter(Boolean);
-  if (wanted.length === 0) return true;
-  if (!region?.trim()) return true;
-  const mine = region.trim().toLowerCase();
-  return wanted.some((w) => mine.includes(w) || w.includes(mine));
-}
-
 /**
  * dealBreaker 키워드가 상대 요약 텍스트에 포함되면 탈락.
  * 간단한 부분문자열 — LLM이 재평가한다.
