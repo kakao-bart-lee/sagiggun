@@ -157,6 +157,24 @@ declare a `bg-ink-*` class**, or it will pick up the paper palette and go dark
 on dark. Write text colors with the plain tokens (`text-yellow`, `text-fog`);
 the surface decides the rest.
 
+### Person colors
+
+Surfaces that show 남/여 identify each person by hue, and that hue is
+surface-scoped exactly like the accents above. There is one pair per ground:
+
+|  | on paper | on ink |
+|---|---|---|
+| 남 | #1f4fa8 (5.92:1) | #6a99f1 (5.86:1) |
+| 여 | #b3243f (5.01:1) | #ea6a80 (5.42:1) |
+
+Painting the paper pair on ink measures 2.16:1 and 2.55:1 — legible in a
+mockup, unreadable in use. A data mark carrying a person color needs the
+contrast against **its own track or fill**, not only against the page.
+
+Color alone never carries gender: every person-colored element ships beside a
+남/여 label. Where a surface reserves color for people, status and actions stay
+on yellow and the neutrals, so a hue never means both a person and a state.
+
 ## Typography
 
 One family: **Pretendard Variable** (CDN) with system-ui fallback. Operate scale — brand 22 / display 32 / title 20 / body 14 / button 15 / seal 11. Emphasis via weight (700–800) and size, not serif display or kickers.
@@ -187,6 +205,17 @@ Flat. Depth comes from **2px edge borders** and **double-ring stamp outlines**. 
 `accession-card` — Paper card: index, thumb, @handle, meta, status seal. Selected state: blue 2px border. Default border `{colors.edge}`.
 
 `status-seal` — Elevated ink disc, accent ring + label. Yellow=대기, blue=초안, red=승인/게시.
+
+A state is drawn as a **ring, never a filled block**, and it never repeats the
+label or the icon of the action that produced it: a button says what it does
+(「좋다고 하셨어요」), the state says what is now true (「승낙 받음」). A state that
+echoes its button reads as a second button. Where a surface reserves red for a
+person color, that surface's settled state takes a neutral fog ring instead of
+red, and the seal's chroma follows the surface it lands on — a yellow seal on a
+paper-backed chip measures 1.2:1 and must swap to `on-card`.
+
+An undo beside a state stays in the quiet tier: the state outweighs the control
+that reverses it.
 
 `stamp-primary` / `stamp-danger` / `stamp-info` — Min height 48px, 2px accent border, double outer ring, elevated-ink fill, accent label. Hover fills with the accent and flips text to ink.
 
