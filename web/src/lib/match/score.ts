@@ -13,6 +13,24 @@ export type DimScore = {
 };
 export type DirectionScore = { score: number; parts: DimScore[] };
 
+/**
+ * 벗어난 정도의 경계.
+ *
+ * 나이·키는 벗어난 만큼만 깎으므로 1cm·1년 차이도 `state`로는 miss다. 그걸
+ * 조건 위반과 같은 기호로 찍으면 화면의 ✕ 개수와 「안 맞는 조건 N가지」가
+ * 어긋나 보인다. 아슬아슬한 것은 따로 부른다.
+ */
+export const REAL_MISS = 0.7;
+/** 이 아래는 판정 문구까지 바꾼다 — 「무난해요」에 걸림돌 한 줄을 붙인다. */
+export const HARD_MISS = 0.5;
+
+export type DimMark = 'match' | 'near' | 'miss' | 'unknown';
+
+export function dimMark(p: DimScore): DimMark {
+  if (p.state !== 'miss') return p.state;
+  return p.score >= REAL_MISS ? 'near' : 'miss';
+}
+
 /** 키·얼굴상은 이제 실재하는 컬럼이다. 비어 있으면 미상으로 떨어진다. */
 export type ScoreSlice = MatchProfileSlice;
 

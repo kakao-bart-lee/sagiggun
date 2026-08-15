@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { CandidateView } from '@/lib/match/candidates';
-import type { DimScore } from '@/lib/match/score';
+import { dimMark, HARD_MISS, type DimScore } from '@/lib/match/score';
 
 type SubjectOption = {
   id: string;
@@ -40,9 +40,6 @@ const other = (g: string | null) => (g === 'F' ? 'M' : 'F');
 const colorOf = (g: string | null, on: 'paper' | 'ink') =>
   PERSON[on][(g === 'F' ? 'F' : 'M') as 'F' | 'M'];
 
-const REAL_MISS = 0.7;
-const HARD_MISS = 0.5;
-
 function label(no: number | null) {
   return no != null ? `${no}번` : '번호 미발급';
 }
@@ -73,9 +70,22 @@ function verdict(c: CandidateView, subjNo: string, candNo: string, hardMiss: boo
  * 왜 ✓인지 ✕인지 다른 데를 보지 않아도 그 줄에서 끝나야 한다.
  * 안 맞는 줄은 명암을 뒤집는다: 요구치는 흐리게, 걸림돌이 된 실제 값은 진하게.
  */
+const MARK = {
+  match: { glyph: '✓', say: '충족', ring: 'border-on-card bg-on-card text-card' },
+  near: { glyph: '≈', say: '거의 맞음', ring: 'border-muted-on-card text-muted-on-card' },
+  miss: { glyph: '✕', say: '안 맞음', ring: 'border-on-card text-on-card' },
+  unknown: {
+    glyph: '–',
+    say: '판단할 정보 없음',
+    ring: 'border-dashed border-muted-on-card text-muted-on-card',
+  },
+} as const;
+
 function Row({ part, otherNo }: { part: DimScore; otherNo: string }) {
-  const { state } = part;
-  const glyph = state === 'match' ? '✓' : state === 'miss' ? '✕' : '–';
+  const kind = dimMark(part);
+  const m = MARK[kind];
+  // 명암을 뒤집는 것은 진짜 걸림돌뿐이다. 1cm 차이까지 강조하면 눈이 갈 곳을 잃는다.
+  const blocked = kind === 'miss';
   return (
     <div className="mt-3 first:mt-0">
       <div className="text-[11px] font-extrabold tracking-wide text-muted-on-card">
@@ -83,29 +93,21 @@ function Row({ part, otherNo }: { part: DimScore; otherNo: string }) {
       </div>
       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
         <span
-          aria-label={
-            state === 'match' ? '충족' : state === 'miss' ? '안 맞음' : '판단할 정보 없음'
-          }
+          aria-label={m.say}
           className={[
             'inline-flex h-[21px] w-[21px] flex-none items-center justify-center rounded-full border-2 text-[11px] font-extrabold',
-            state === 'match'
-              ? 'border-on-card bg-on-card text-card'
-              : state === 'miss'
-                ? 'border-on-card text-on-card'
-                : 'border-dashed border-muted-on-card text-muted-on-card',
+            m.ring,
           ].join(' ')}
         >
-          {glyph}
+          {m.glyph}
         </span>
-        <span
-          className={`text-sm font-bold ${state === 'miss' ? 'text-muted-on-card' : 'text-on-card'}`}
-        >
+        <span className={`text-sm font-bold ${blocked ? 'text-muted-on-card' : 'text-on-card'}`}>
           {part.want ?? <span className="font-semibold text-muted-on-card">안 적으셨어요</span>}
         </span>
         {part.has && (
           <span
             className={`ml-auto whitespace-nowrap text-[11px] font-bold ${
-              state === 'miss' ? 'text-on-card' : 'text-muted-on-card'
+              blocked ? 'text-on-card' : 'text-muted-on-card'
             }`}
           >
             {otherNo} {part.has}
@@ -167,8 +169,9 @@ export function FacingSheet({ subjects }: { subjects: SubjectOption[] }) {
   const hardMiss = allParts.some((p) => p.state === 'miss' && p.score < HARD_MISS);
   const v = c ? verdict(c, subjNo, candNo, hardMiss) : null;
 
+  // 화면의 ✕ 개수와 이 숫자는 같아야 한다. 아슬아슬한 줄(≈)은 세지 않는다.
   const bad = c
-    ? allParts.filter((p) => p.state === 'miss' && p.score < REAL_MISS).length
+    ? allParts.filter((p) => dimMark(p) === 'miss').length
     : 0;
   const ask = c ? allParts.filter((p) => p.state === 'unknown').length : 0;
 

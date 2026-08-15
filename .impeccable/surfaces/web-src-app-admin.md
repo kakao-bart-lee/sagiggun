@@ -28,6 +28,8 @@ Never use 「입수」. Prefer 「새 프로필」, 「오늘 세션」, 「대�
 ## Memorable moment
 Strip + desk: yellow outlined stamp CTA + outlined status seals on white accession cards over ink-black blotter.
 
+매칭 화면, 조건 한 줄의 표시는 네 단계다 — `✓` 채운 칩(충족) · `≈` 흐린 테두리(아슬아슬하게 벗어남) · `✕` 진한 테두리(정말 안 맞음) · `–` 점선(정보 없음). 나이·키는 벗어난 만큼만 깎이므로 1cm 차이도 코드상으로는 miss다. 그걸 조건 위반과 같은 기호로 찍으면 ✕ 개수와 「안 맞는 조건 N가지」가 어긋나 보인다. 명암을 뒤집어 상대의 실제 값을 강조하는 것은 `✕` 줄뿐이다.
+
 매칭 화면: the **맞물림 마크** — two interlocking rings where each ring's radius is how well the other person meets that person's conditions and the overlap is the harmonic mean. Authored SVG, 76×40, person colors on ink. It belongs to this screen only; it is meaningful solely where a bidirectional score exists, so it does not generalize into the shared system.
 
 ## Unresolved
