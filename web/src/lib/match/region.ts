@@ -153,14 +153,21 @@ export function regionTagsOf(texts: readonly (string | null | undefined)[]): Reg
   return REGION_CODES.filter((c) => found.has(c));
 }
 
+/** 「어디든 좋다」는 지명이 없는 게 아니라 전부를 고른 것이다. */
+const ANYWHERE = /장거리|상관\s*없|관계\s*없|어디든|어디라도|전국|상관무/;
+
 /**
  * 사는 곳과 원하는 곳이 겹치는가.
- * 한쪽에서 지명을 못 읽어내면 null — 「장거리 가능해요!」를 안 맞는다고 하지 않는다.
+ *
+ * 어느 쪽이든 「어디든 좋다」고 적었으면 맞는다 — 가장 유연한 사람이
+ * 미상으로 떨어져 매번 0.6으로 깎이면, 조건을 좁게 적은 사람보다 손해를 본다.
+ * 그게 아니라 정말 지명을 못 읽어냈으면 null이다(예: 「미국」).
  */
 export function regionsOverlap(
   mine: readonly (string | null | undefined)[],
   wanted: readonly (string | null | undefined)[]
 ): boolean | null {
+  if ([...mine, ...wanted].some((t) => t && ANYWHERE.test(t))) return true;
   const a = regionTagsOf(mine);
   const b = regionTagsOf(wanted);
   if (a.length === 0 || b.length === 0) return null;
@@ -178,7 +185,9 @@ const GROUPS: [string, RegionCode[]][] = [
 /** 화면에 쓸 짧은 이름. 「경상도권 여성분 선호합니다.」 → 「경상」 */
 export function regionLabel(texts: readonly (string | null | undefined)[]): string | null {
   const tags = new Set(regionTagsOf(texts));
-  if (tags.size === 0) return null;
+  if (tags.size === 0) {
+    return texts.some((t) => t && ANYWHERE.test(t)) ? '어디든' : null;
+  }
 
   const parts: string[] = [];
   for (const [name, codes] of GROUPS) {

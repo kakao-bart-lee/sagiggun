@@ -29,6 +29,14 @@ describe('regionTags', () => {
     );
   });
 
+  it('앞 글자가 한글이면 건너뛴다 — 「대전남부」에서 「전남」을 읽지 않는다', () => {
+    expect(regionTags('대전남부')).toEqual(['충남', '대전']);
+  });
+
+  it('긴 이름이 먼저 걸린다 — 「경상남도」가 경상 전체로 퍼지지 않는다', () => {
+    expect(regionTags('경상남도')).toEqual(['경남']);
+  });
+
   it('지명이 없으면 빈 배열', () => {
     expect(regionTags('거리는 크게 상관 없어요!')).toEqual([]);
     expect(regionTags(null)).toEqual([]);
@@ -55,8 +63,14 @@ describe('regionsOverlap', () => {
     expect(regionsOverlap([], ['서울'])).toBeNull();
   });
 
-  it('지명을 못 읽어내도 판단하지 않는다', () => {
-    expect(regionsOverlap(['서울'], ['거리 상관 없어요'])).toBeNull();
+  it('어디든 좋다고 적었으면 맞는다 — 가장 유연한 사람에게 벌점을 주지 않는다', () => {
+    expect(regionsOverlap(['서울'], ['장거리 가능해요!'])).toBe(true);
+    expect(regionsOverlap(['서울'], ['거리 상관 없어요'])).toBe(true);
+    expect(regionsOverlap(['서울'], ['전국 어디든 괜찮아요'])).toBe(true);
+  });
+
+  it('그래도 못 읽어내면 판단하지 않는다', () => {
+    expect(regionsOverlap(['서울'], ['미국'])).toBeNull();
   });
 });
 
@@ -70,7 +84,11 @@ describe('regionLabel', () => {
     expect(regionLabel(['대구 또는 경북 선호해요!'])).toBe('경북·대구');
   });
 
-  it('못 읽어내면 null — 문장을 그대로 흘리지 않는다', () => {
-    expect(regionLabel(['장거리 가능해요!'])).toBeNull();
+  it('어디든 좋다는 뜻이면 그렇게 적는다 — 문장을 그대로 흘리지 않는다', () => {
+    expect(regionLabel(['장거리 가능해요!'])).toBe('어디든');
+  });
+
+  it('정말 못 읽어내면 null', () => {
+    expect(regionLabel(['미국'])).toBeNull();
   });
 });

@@ -183,8 +183,10 @@ describe('지역 판정은 광역 관계를 안다', () => {
     expect(dim(scoreDirection(wantsGyeongsang, p({ region: '대구' })), '지역').want).toBe('경상');
   });
 
-  it('지명을 못 읽어내면 깎지 않는다 — 「장거리 가능해요!」', () => {
+  it('「장거리 가능해요!」는 미상이 아니라 맞음이다 — 유연한 사람이 손해 보지 않는다', () => {
     const anywhere = p({ partnerRegions: ['장거리 가능해요!'] });
-    expect(dim(scoreDirection(anywhere, p({ region: '부산' })), '지역').state).toBe('unknown');
+    const region = dim(scoreDirection(anywhere, p({ region: '부산' })), '지역');
+    expect(region.state).toBe('match');
+    expect(region.want).toBe('어디든');
   });
 });
