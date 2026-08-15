@@ -99,6 +99,70 @@ describe('runMatch', () => {
     expect(ranked).toEqual(['fresh']);
   });
 
+  it('짝 점수가 높은 후보부터 LLM에 넘긴다', async () => {
+    const subject = slice('s', { gender: 'M', region: '서울', partnerRegions: ['서울'] });
+    // 둘 다 하드필터는 통과하지만, poor는 자기 지역 조건을 안 적어 반대 방향 점수가 낮다
+    const good = slice('good', { gender: 'F', region: '서울', partnerRegions: ['서울'] });
+    const poor = slice('poor', { gender: 'F', region: '서울', partnerRegions: [] });
+
+    let seen: string[] = [];
+    await runMatch('s', 5, {
+      findSubject: async () => subject,
+      listPool: async () => [poor, good], // 일부러 낮은 쪽을 먼저 둔다
+      listJudged: async () => [],
+      rank: async (_s, candidates) => {
+        seen = candidates.map((c) => c.id);
+        return [];
+      },
+      saveRun: async () => {
+        throw new Error('should not save');
+      },
+    });
+    expect(seen).toEqual(['good', 'poor']);
+  });
+
+  it('LLM에 넘기는 후보를 8명으로 자른다', async () => {
+    const subject = slice('s', { gender: 'M' });
+    const pool = Array.from({ length: 12 }, (_, i) => slice(`c${i}`, { gender: 'F' }));
+
+    let count = 0;
+    await runMatch('s', 5, {
+      findSubject: async () => subject,
+      listPool: async () => pool,
+      listJudged: async () => [],
+      rank: async (_s, candidates) => {
+        count = candidates.length;
+        return [];
+      },
+      saveRun: async () => {
+        throw new Error('should not save');
+      },
+    });
+    expect(count).toBe(8);
+  });
+
+  it('filteredCount는 LLM에 넘긴 수가 아니라 실제 필터 통과 수다', async () => {
+    const subject = slice('s', { gender: 'M' });
+    const pool = Array.from({ length: 12 }, (_, i) => slice(`c${i}`, { gender: 'F' }));
+
+    const result = await runMatch('s', 5, {
+      findSubject: async () => subject,
+      listPool: async () => pool,
+      listJudged: async () => [],
+      rank: async () => [
+        {
+          candidateId: 'c0',
+          score: 0.9,
+          rationale: 'ok',
+          draftForSubject: 'a',
+          draftForCandidate: 'b',
+        },
+      ],
+      saveRun: async () => ({ runId: 'r', suggestions: [] }),
+    });
+    expect(result).toMatchObject({ ok: true, filteredCount: 12 });
+  });
+
   it('필터 통과 후보가 없으면 400', async () => {
     const result = await runMatch('s', 5, {
       findSubject: async () => slice('s'),
