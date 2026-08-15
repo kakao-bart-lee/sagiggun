@@ -74,16 +74,30 @@ function summaryText(p: MatchProfileSlice): string {
     .join(' ');
 }
 
+export type FilterOptions = {
+  /** 이미 수락/거절로 판정이 끝난 상대. 방향과 무관하게 다시 올리지 않는다. */
+  excludeIds?: ReadonlySet<string>;
+};
+
 /**
- * subject 기준 하드필터. 후보 풀에서 자기 자신·상태·나이 상호·지역·dealBreaker를 걸러낸다.
+ * subject 기준 하드필터. 자기 자신·상태·성별·나이 상호·지역·dealBreaker·기판정을 걸러낸다.
+ *
+ * 경계(성별)만 확실히 막고 나머지는 fail-open이다. 풀이 수십 명뿐이라
+ * 선호까지 하드필터로 올리면 후보가 0에 가까워진다.
  */
 export function filterCandidates(
   subject: MatchProfileSlice,
-  pool: MatchProfileSlice[]
+  pool: MatchProfileSlice[],
+  options: FilterOptions = {}
 ): MatchProfileSlice[] {
   return pool.filter((c) => {
     if (c.id === subject.id) return false;
     if (!CANDIDATE_STATUSES.has(c.status)) return false;
+    if (options.excludeIds?.has(c.id)) return false;
+
+    // 이성만 소개한다. 둘 다 알 때만 판단하고, 모르면 막지 않는다 —
+    // 성별이 비어 있다고 그 프로필을 영영 안 보여주면 조용히 사라진다.
+    if (subject.gender && c.gender && subject.gender === c.gender) return false;
 
     // subject가 원하는 상대 나이 ← candidate 출생연도
     if (!birthYearInRange(c.birthYear, subject.partnerBirthYearMin, subject.partnerBirthYearMax)) {

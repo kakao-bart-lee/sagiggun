@@ -82,6 +82,23 @@ describe('rankMatches', () => {
 });
 
 describe('runMatch', () => {
+  it('이미 판정한 상대는 후보에서 뺀다', async () => {
+    const ranked: string[] = [];
+    await runMatch('s', 5, {
+      findSubject: async () => slice('s', { gender: 'M' }),
+      listPool: async () => [slice('judged', { gender: 'F' }), slice('fresh', { gender: 'F' })],
+      listJudged: async () => ['judged'],
+      rank: async (_subject, candidates) => {
+        ranked.push(...candidates.map((c) => c.id));
+        return [];
+      },
+      saveRun: async () => {
+        throw new Error('should not save');
+      },
+    });
+    expect(ranked).toEqual(['fresh']);
+  });
+
   it('필터 통과 후보가 없으면 400', async () => {
     const result = await runMatch('s', 5, {
       findSubject: async () => slice('s'),

@@ -35,6 +35,8 @@ export type RunMatchResult =
 export type RunMatchDeps = {
   findSubject?: (id: string) => Promise<MatchProfileSlice | null>;
   listPool?: () => Promise<MatchProfileSlice[]>;
+  /** 이 subject와 이미 수락/거절까지 간 상대의 id. 방향 무관. */
+  listJudged?: (subjectId: string) => Promise<string[]>;
   rank?: (
     subject: MatchProfileSlice,
     candidates: MatchProfileSlice[],
@@ -69,6 +71,22 @@ export async function runMatch(
       });
     });
 
+  // 한 번 수락하거나 거절한 짝은 다시 올리지 않는다. 짝은 방향이 없으므로
+  // subject가 어느 쪽에 있었든 같은 상대로 본다.
+  const listJudged =
+    deps.listJudged ??
+    (async (sid: string) => {
+      const { prisma } = await import('@/lib/prisma');
+      const rows = await prisma.matchSuggestion.findMany({
+        where: {
+          status: { not: 'PENDING' },
+          OR: [{ run: { subjectId: sid } }, { candidateId: sid }],
+        },
+        select: { candidateId: true, run: { select: { subjectId: true } } },
+      });
+      return rows.map((r) => (r.candidateId === sid ? r.run.subjectId : r.candidateId));
+    });
+
   const rank =
     deps.rank ??
     ((subject, candidates, n) => rankMatches(subject, candidates, n));
@@ -99,8 +117,10 @@ export async function runMatch(
   const subject = await findSubject(subjectId);
   if (!subject) return { ok: false, status: 404, error: '없는 프로필입니다.' };
 
-  const pool = await listPool();
-  const filtered = filterCandidates(subject, pool).slice(0, MAX_LLM_CANDIDATES);
+  const [pool, judged] = await Promise.all([listPool(), listJudged(subjectId)]);
+  const filtered = filterCandidates(subject, pool, {
+    excludeIds: new Set(judged),
+  }).slice(0, MAX_LLM_CANDIDATES);
   if (filtered.length === 0) {
     return { ok: false, status: 400, error: '하드필터를 통과한 후보가 없습니다.' };
   }

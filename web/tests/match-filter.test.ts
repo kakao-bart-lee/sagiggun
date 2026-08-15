@@ -91,4 +91,41 @@ describe('filterCandidates', () => {
     });
     expect(filterCandidates(subject, [picky])).toEqual([]);
   });
+
+  it('같은 성별은 제외한다', () => {
+    const subject = profile({ id: 's', gender: 'M', birthYear: 1995 });
+    const pool = [
+      profile({ id: 'same', gender: 'M', birthYear: 1995 }),
+      profile({ id: 'other', gender: 'F', birthYear: 1995 }),
+    ];
+    expect(filterCandidates(subject, pool).map((p) => p.id)).toEqual(['other']);
+  });
+
+  it('성별을 모르면 막지 않는다 — 아는 두 값이 같을 때만 탈락시킨다', () => {
+    const subject = profile({ id: 's', gender: 'M', birthYear: 1995 });
+    const unknown = profile({ id: 'u', gender: null, birthYear: 1995 });
+    expect(filterCandidates(subject, [unknown]).map((p) => p.id)).toEqual(['u']);
+
+    const noGenderSubject = profile({ id: 's2', gender: null, birthYear: 1995 });
+    const male = profile({ id: 'm', gender: 'M', birthYear: 1995 });
+    expect(filterCandidates(noGenderSubject, [male]).map((p) => p.id)).toEqual(['m']);
+  });
+
+  it('이미 판정한 짝은 다시 올리지 않는다', () => {
+    const subject = profile({ id: 's', gender: 'M', birthYear: 1995 });
+    const pool = [
+      profile({ id: 'judged', gender: 'F', birthYear: 1995 }),
+      profile({ id: 'fresh', gender: 'F', birthYear: 1995 }),
+    ];
+    const ids = filterCandidates(subject, pool, {
+      excludeIds: new Set(['judged']),
+    }).map((p) => p.id);
+    expect(ids).toEqual(['fresh']);
+  });
+
+  it('제외 목록을 안 주면 아무것도 더 막지 않는다', () => {
+    const subject = profile({ id: 's', gender: 'M', birthYear: 1995 });
+    const pool = [profile({ id: 'a', gender: 'F', birthYear: 1995 })];
+    expect(filterCandidates(subject, pool).map((p) => p.id)).toEqual(['a']);
+  });
 });
