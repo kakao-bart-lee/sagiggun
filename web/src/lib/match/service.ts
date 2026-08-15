@@ -1,26 +1,8 @@
 import { filterCandidates, type MatchProfileSlice } from '@/lib/match/filter';
 import { scorePair } from '@/lib/match/score';
+import { defaultCandidateDeps } from '@/lib/match/source';
 import { rankMatches, type MatchRankItem } from '@/lib/llm/match';
 import type { DeliveryStatus, MatchSuggestion, MatchSuggestionStatus } from '@prisma/client';
-
-const SELECT_SLICE = {
-  id: true,
-  seq: true,
-  sourceHandle: true,
-  status: true,
-  gender: true,
-  birthYear: true,
-  region: true,
-  partnerBirthYearMin: true,
-  partnerBirthYearMax: true,
-  partnerRegions: true,
-  dealBreakers: true,
-  idealType: true,
-  hobbies: true,
-  appealPoints: true,
-  job: true,
-  heightCm: true,
-} as const;
 
 export const DEFAULT_TOP_N = 5;
 /**
@@ -59,39 +41,7 @@ export async function runMatch(
   topN: number = DEFAULT_TOP_N,
   deps: RunMatchDeps = {}
 ): Promise<RunMatchResult> {
-  const findSubject =
-    deps.findSubject ??
-    (async (id: string) => {
-      const { prisma } = await import('@/lib/prisma');
-      return prisma.profile.findUnique({ where: { id }, select: SELECT_SLICE });
-    });
-
-  const listPool =
-    deps.listPool ??
-    (async () => {
-      const { prisma } = await import('@/lib/prisma');
-      return prisma.profile.findMany({
-        where: { status: { in: ['APPROVED', 'PUBLISHED'] } },
-        select: SELECT_SLICE,
-        orderBy: { updatedAt: 'desc' },
-      });
-    });
-
-  // 한 번 수락하거나 거절한 짝은 다시 올리지 않는다. 짝은 방향이 없으므로
-  // subject가 어느 쪽에 있었든 같은 상대로 본다.
-  const listJudged =
-    deps.listJudged ??
-    (async (sid: string) => {
-      const { prisma } = await import('@/lib/prisma');
-      const rows = await prisma.matchSuggestion.findMany({
-        where: {
-          status: { not: 'PENDING' },
-          OR: [{ run: { subjectId: sid } }, { candidateId: sid }],
-        },
-        select: { candidateId: true, run: { select: { subjectId: true } } },
-      });
-      return rows.map((r) => (r.candidateId === sid ? r.run.subjectId : r.candidateId));
-    });
+  const { findSubject, listPool, listJudged } = { ...defaultCandidateDeps(), ...deps };
 
   const rank =
     deps.rank ??

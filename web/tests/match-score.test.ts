@@ -133,3 +133,36 @@ describe('scorePair', () => {
     expect(scorePair(a, b).harmonic).toBeCloseTo(scorePair(b, a).harmonic, 10);
   });
 });
+
+describe('DimScore 표시값', () => {
+  it('조건과 상대의 실제 값을 사람이 읽을 문장으로 함께 준다', () => {
+    const me = p({ partnerBirthYearMin: 1994, partnerBirthYearMax: 1999 });
+    const age = dim(scoreDirection(me, p({ birthYear: 1996 })), '나이');
+    expect(age.want).toBe('1994~1999년생');
+    expect(age.has).toBe('1996년생');
+  });
+
+  it('한쪽만 있는 구간은 이상/이하로 쓴다', () => {
+    const tall = p({ partnerHeightMin: 175, partnerHeightMax: null });
+    expect(dim(scoreDirection(tall, p({ heightCm: 180 })), '키').want).toBe('175cm 이상');
+    const short = p({ partnerHeightMin: null, partnerHeightMax: 165 });
+    expect(dim(scoreDirection(short, p({ heightCm: 160 })), '키').want).toBe('165cm 이하');
+  });
+
+  it('조건이 없으면 want가 없고, 상대 값을 모르면 has가 없다', () => {
+    const noCond = dim(scoreDirection(p(), p({ birthYear: 1996 })), '나이');
+    expect(noCond.want).toBeNull();
+    expect(noCond.has).toBe('1996년생');
+
+    const noVal = dim(scoreDirection(p({ partnerRegions: ['서울'] }), p({ region: null })), '지역');
+    expect(noVal.want).toBe('서울쪽');
+    expect(noVal.has).toBeNull();
+  });
+
+  it('얼굴상은 여러 개를 모아 쓴다', () => {
+    const me = p({ partnerFaceTypes: ['고양이상', '여우상'] });
+    const face = dim(scoreDirection(me, p({ faceType: '곰상' })), '얼굴상');
+    expect(face.want).toBe('고양이상·여우상');
+    expect(face.has).toBe('곰상');
+  });
+});

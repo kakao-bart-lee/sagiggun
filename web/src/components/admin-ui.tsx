@@ -18,6 +18,9 @@ export function AdminTopBar({ right }: { right?: React.ReactNode }) {
         <Link href="/admin" className="shrink-0 whitespace-nowrap px-1.5 py-2 hover:text-fog">
           목록
         </Link>
+        <Link href="/admin/match" className="shrink-0 whitespace-nowrap px-1.5 py-2 hover:text-fog">
+          소개하기
+        </Link>
         <Link
           href="/admin/inquiries"
           className="shrink-0 whitespace-nowrap px-1.5 py-2 hover:text-fog"
