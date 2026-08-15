@@ -46,3 +46,44 @@ describe('llm mock fixtures', () => {
     expect(ranks[0].candidateId).toBe('c1');
   });
 });
+
+describe('mockRankMatches — 계약 준수', () => {
+  const base = {
+    id: 's',
+    seq: 12,
+    sourceHandle: 'subject_handle',
+    status: 'PUBLISHED' as const,
+    gender: 'M',
+    birthYear: 1995,
+    region: '서울',
+    partnerBirthYearMin: null,
+    partnerBirthYearMax: null,
+    partnerRegions: [],
+    dealBreakers: [],
+    idealType: [],
+    hobbies: [],
+    appealPoints: [],
+    job: null,
+    heightCm: null,
+  };
+
+  it('초안에 핸들을 쓰지 않고 게시번호로 지칭한다', () => {
+    const [r] = mockRankMatches(base, [{ ...base, id: 'c', seq: 43, sourceHandle: 'secret_handle' }], 1);
+    expect(r.draftForSubject).not.toContain('secret_handle');
+    expect(r.draftForSubject).not.toContain('subject_handle');
+    expect(r.draftForCandidate).not.toContain('secret_handle');
+    expect(r.draftForSubject).toContain('43번');
+    expect(r.draftForCandidate).toContain('12번');
+  });
+
+  it('번호가 아직 없으면 번호인 척하지 않는다', () => {
+    const [r] = mockRankMatches(base, [{ ...base, id: 'c', seq: null }], 1);
+    expect(r.draftForSubject).not.toContain('null');
+  });
+
+  it('score는 두 방향의 조화평균이다', () => {
+    const [r] = mockRankMatches(base, [{ ...base, id: 'c', seq: 43 }], 1);
+    const h = (2 * r.scoreForSubject * r.scoreForCandidate) / (r.scoreForSubject + r.scoreForCandidate);
+    expect(r.score).toBeCloseTo(h, 10);
+  });
+});
